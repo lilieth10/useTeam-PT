@@ -1,0 +1,133 @@
+{
+  "name": "Kanban Backlog Export",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kanban-export",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extraer datos del webhook\nconst boardId = $input.item.json.body.boardId;\nconst cards = $input.item.json.body.cards || [];\nconst email = $input.item.json.body.email;\n\n// Filtrar solo las tarjetas del backlog\nconst backlogCards = cards.filter(card => \n  card.column && card.column.toLowerCase() === 'backlog'\n);\n\n// Transformar datos para CSV\nconst csvData = backlogCards.map(card => ({\n  'ID': card.id || card._id,\n  'Título': card.title,\n  'Descripción': card.description || '',\n  'Columna': card.column,\n  'Fecha de Creación': new Date(card.createdAt).toLocaleString('es-ES')\n}));\n\nreturn {\n  json: {\n    boardId,\n    email,\n    cards: csvData,\n    totalCards: csvData.length,\n    exportDate: new Date().toISOString()\n  }\n};"
+      },
+      "id": "process-data",
+      "name": "Process Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileFormat": "csv",
+        "options": {
+          "fileName": "backlog-export-{{$json.exportDate}}.csv",
+          "headerRow": true
+        }
+      },
+      "id": "generate-csv",
+      "name": "Generate CSV",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.EMAIL_FROM}}",
+        "toEmail": "={{$json.email || $env.EMAIL_TO}}",
+        "subject": "Exportación de Backlog - Tablero Kanban",
+        "emailType": "html",
+        "message": "<h2>Exportación de Backlog Completada</h2><p>Se ha generado la exportación del backlog de tu tablero Kanban.</p><p><strong>Total de tarjetas:</strong> {{$json.totalCards}}</p><p><strong>Fecha de exportación:</strong> {{$json.exportDate}}</p><p>El archivo CSV está adjunto a este correo.</p><br><p>Saludos,<br>Equipo Kanban</p>",
+        "attachments": "data",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [850, 300],
+      "credentials": {
+        "smtp": {
+          "id": "1",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"Backlog exportado exitosamente\",\n  \"totalCards\": {{$json.totalCards}},\n  \"exportDate\": \"{{$json.exportDate}}\"\n}",
+        "options": {}
+      },
+      "id": "http-response",
+      "name": "HTTP Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Process Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Data": {
+      "main": [
+        [
+          {
+            "node": "Generate CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate CSV": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "HTTP Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "kanban-backlog-export",
+  "meta": {
+    "instanceId": "kanban-board"
+  },
+  "tags": []
+}
