@@ -1,9 +1,14 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { kanbanReducer, initialState } from './kanbanReducer';
+import { useSocket } from './SocketContext';
 import toast from 'react-hot-toast';
 
 const KanbanContext = createContext();
 
+/**
+ * Hook para acceder al contexto de Kanban
+ * Responsabilidad: Proveer acceso seguro al estado de Kanban
+ */
 export const useKanban = () => {
   const context = useContext(KanbanContext);
   if (!context) {
@@ -12,10 +17,19 @@ export const useKanban = () => {
   return context;
 };
 
+/**
+ * Proveedor de Kanban
+ * Responsabilidad: Gestionar estado del tablero Kanban y coordinar con WebSocket
+ * Principio: Single Responsibility - solo maneja estado de Kanban
+ *principio: Dependency Inversion - depende de abstracción (SocketService)
+ */
 export const KanbanProvider = ({ children }) => {
   const [state, dispatch] = useReducer(kanbanReducer, initialState);
+  const { socket } = useSocket();
 
+  // Inicializar datos y configurar listeners de WebSocket
   useEffect(() => {
+    // Cargar datos iniciales (mock data)
     const mockBoards = [
       {
         _id: '1',
@@ -70,31 +84,28 @@ export const KanbanProvider = ({ children }) => {
     dispatch({ type: 'SET_COLUMNS', payload: mockColumns });
     dispatch({ type: 'SET_CARDS', payload: mockCards });
     dispatch({ type: 'SET_ACTIVE_BOARD', payload: '1' });
-  }, []);
 
-  const exportBacklog = async (email) => {
-    try {
-      dispatch({ type: 'SET_EXPORTING', payload: true });
-      // Simular llamada API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('Solicitud de exportación enviada');
-    } catch (error) {
-      console.error('Error exporting backlog:', error);
-      toast.error('Error al exportar el backlog');
-      throw error;
-    } finally {
-      dispatch({ type: 'SET_EXPORTING', payload: false });
+    // Configurar listeners de WebSocket si está disponible
+    if (socket) {
+      setupSocketListeners(socket, dispatch);
     }
-  };
+
+    // Cleanup listeners al desmontar
+    return () => {
+      if (socket) {
+        socket.removeAllListeners();
+      }
+    };
+  }, [socket]);
 
   const value = {
-    // State
+    // Estado
     ...state,
     
-    // Actions
-    exportBacklog,
+    // Socket
+    socket,
     
-    // Dispatch for direct state updates
+    // Dispatch para actualizaciones directas
     dispatch
   };
 
@@ -104,3 +115,51 @@ export const KanbanProvider = ({ children }) => {
     </KanbanContext.Provider>
   );
 };
+
+/**
+ * Configurar listeners de WebSocket para colaboración en tiempo real
+ * @param {Socket} socket - Socket de WebSocket
+ * @param {Function} dispatch - Función dispatch del reducer
+ */
+function setupSocketListeners(socket, dispatch) {
+  // Listeners para tarjetas
+  socket.on('card:created', (card) => {
+    dispatch({ type: 'CARD_CREATED', payload: card });
+    toast.success(`Nueva tarjeta: ${card.title}`);
+  });
+
+  socket.on('card:updated', (card) => {
+    dispatch({ type: 'CARD_UPDATED', payload: card });
+    toast.success(`Tarjeta actualizada: ${card.title}`);
+  });
+
+  socket.on('card:deleted', (cardId) => {
+    dispatch({ type: 'CARD_DELETED', payload: cardId });
+    toast.success('Tarjeta eliminada');
+  });
+
+  socket.on('card:moved', (card) => {
+    dispatch({ type: 'CARD_MOVED', payload: card });
+    toast.success(`Tarjeta movida: ${card.title}`);
+  });
+
+  // Listeners para columnas
+  socket.on('column:created', (column) => {
+    dispatch({ type: 'COLUMN_CREATED', payload: column });
+    toast.success(`Nueva columna: ${column.title}`);
+  });
+
+  socket.on('column:updated', (column) => {
+    dispatch({ type: 'COLUMN_UPDATED', payload: column });
+    toast.success(`Columna actualizada: ${column.title}`);
+  });
+
+  // Listeners para exportación
+  socket.on('export:success', (data) => {
+    toast.success(`Backlog exportado exitosamente. ${data.totalCards} tarjetas enviadas.`);
+  });
+
+  socket.on('export:error', (error) => {
+    toast.error(`Error en exportación: ${error.message}`);
+  });
+}
