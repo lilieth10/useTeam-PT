@@ -1,37 +1,39 @@
 import React from 'react';
 import { useKanban } from '../../context/KanbanContext';
 
-const Board = () => {
+/**
+ * Componente Board (Tablero Kanban)
+ * Responsabilidad: Mostrar el tablero con sus columnas y tarjetas
+ * Principio: Single Responsibility - solo maneja la visualización del tablero
+ */
+export const Board = () => {
   const { boards, columns, cards, activeBoardId, loading } = useKanban();
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   const activeBoard = boards.find(board => board._id === activeBoardId);
   const boardColumns = columns.filter(column => column.boardId === activeBoardId);
-
+  
   if (!activeBoard) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold text-gray-600 mb-4">
-          No hay tableros disponibles
-        </h2>
-        <p className="text-gray-500">
-          Crea tu primer tablero para comenzar a organizar tus tareas.
-        </p>
-      </div>
-    );
+    return <EmptyBoardState />;
   }
 
+  /**
+   * Obtener tarjetas para una columna específica
+   * @param {string} columnId - ID de la columna
+   * @returns {Array} Array de tarjetas
+   */
   const getCardsForColumn = (columnId) => {
     return cards.filter(card => card.columnId === columnId);
   };
 
+  /**
+   * Obtener color de prioridad para tarjetas
+   * @param {string} priority - Prioridad de la tarjeta
+   * @returns {string} Clase CSS para el color
+   */
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'high': return 'border-l-red-500';
@@ -43,15 +45,8 @@ const Board = () => {
 
   return (
     <div className="h-full">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          {activeBoard.title}
-        </h1>
-        {activeBoard.description && (
-          <p className="text-gray-600">{activeBoard.description}</p>
-        )}
-      </div>
-
+      <BoardHeader board={activeBoard} />
+      
       <div className="flex space-x-6 overflow-x-auto pb-6">
         {boardColumns.map((column) => (
           <div key={column._id} className="flex-shrink-0 w-80">
@@ -102,4 +97,40 @@ const Board = () => {
   );
 };
 
-export default Board;
+/**
+ * Header del tablero
+ * @param {Object} board - Datos del tablero
+ */
+const BoardHeader = ({ board }) => (
+  <div className="mb-6">
+    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      {board.title}
+    </h1>
+    {board.description && (
+      <p className="text-gray-600">{board.description}</p>
+    )}
+  </div>
+);
+
+/**
+ * Componente de carga
+ */
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+  </div>
+);
+
+/**
+ * Estado cuando no hay tableros
+ */
+const EmptyBoardState = () => (
+  <div className="text-center py-12">
+    <h2 className="text-2xl font-semibold text-gray-600 mb-4">
+      No hay tableros disponibles
+    </h2>
+    <p className="text-gray-500">
+      Crea tu primer tablero para comenzar a organizar tus tareas.
+    </p>
+  </div>
+);
