@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import { useKanban } from '../../context/KanbanContext';
 
-const ExportModal = ({ isOpen, onClose }) => {
+/**
+ * Modal de exportación de backlog
+ * Responsabilidad: Interfaz para configurar exportación de backlog
+ * Principio: Single Responsibility - solo maneja UI de exportación
+ */
+export const ExportModal = ({ isOpen, onClose, onExport, isExporting }) => {
   const [email, setEmail] = useState('');
-  const { exportBacklog, exporting } = useKanban();
 
+  /**
+   * Manejar envío del formulario
+   * @param {Event} e - Evento del formulario
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim()) return;
     
     try {
-      await exportBacklog(email);
-      onClose();
+      await onExport(email);
       setEmail('');
     } catch (error) {
       console.error('Export error:', error);
@@ -38,6 +44,7 @@ const ExportModal = ({ isOpen, onClose }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="ejemplo@correo.com"
               required
+              disabled={isExporting}
             />
           </div>
           
@@ -46,16 +53,16 @@ const ExportModal = ({ isOpen, onClose }) => {
               type="button"
               onClick={onClose}
               className="btn-secondary"
-              disabled={exporting}
+              disabled={isExporting}
             >
               Cancelar
             </button>
             <button
               type="submit"
               className="btn-primary"
-              disabled={exporting || !email.trim()}
+              disabled={isExporting || !email.trim()}
             >
-              {exporting ? 'Exportando...' : 'Exportar'}
+              {isExporting ? 'Exportando...' : 'Exportar'}
             </button>
           </div>
         </form>
@@ -63,5 +70,3 @@ const ExportModal = ({ isOpen, onClose }) => {
     </div>
   );
 };
-
-export default ExportModal;
