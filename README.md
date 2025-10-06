@@ -99,7 +99,7 @@ cd useTeam-PT
 Editar el archivo `.env` en la raíz del proyecto con tus configuraciones:
 
 ```bash
-cp .env.example .env
+cp .env
 ```
 Editar el archivo `.env` con tus configuraciones.
 
