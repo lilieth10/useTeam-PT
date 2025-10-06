@@ -98,31 +98,10 @@ cd useTeam-PT
 
 Editar el archivo `.env` en la raíz del proyecto con tus configuraciones:
 
-```env
-# Database
-MONGODB_URI=mongodb://localhost:27017/kanban-board
-
-# Backend
-PORT=3000
-NODE_ENV=development
-N8N_WEBHOOK_URL=http://localhost:5678/webhook/kanban-export
-
-# Frontend
-REACT_APP_API_URL=http://localhost:3000/api
-REACT_APP_WS_URL=ws://localhost:3000
-
-# N8N Configuration
-N8N_PORT=5678
-N8N_BASIC_AUTH_ACTIVE=false
-
-# Email Configuration (for N8N)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-EMAIL_FROM=your-email@gmail.com
-EMAIL_TO=recipient@example.com
+```bash
+cp .env.example .env
 ```
+Editar el archivo `.env` con tus configuraciones.
 
 ### 3. Levantar servicios con Docker
 
