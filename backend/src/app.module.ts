@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BoardModule } from './modules/board/board.module';
+import { WebSocketModule } from './modules/websocket/websocket.module';
 
 @Module({
   imports: [
@@ -16,10 +17,10 @@ import { BoardModule } from './modules/board/board.module';
     
     // Módulos de la aplicación
     BoardModule,
+    WebSocketModule,
     // ColumnModule, // TODO: Crear módulo
     // CardModule, // TODO: Crear módulo  
     // ExportModule, // TODO: Crear módulo
-    // WebSocketModule, // TODO: Crear módulo
   ],
 })
 export class AppModule {}
