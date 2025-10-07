@@ -8,7 +8,7 @@ interface KanbanColumnProps {
   title: string;
   tasks: Task[];
   onEditTask: (task: Task) => void;
-  onDeleteTask: (taskId: number) => void;
+  onDeleteTask: (taskId: string | number) => void;
 }
 
 export const KanbanColumn = ({ id, title, tasks, onEditTask, onDeleteTask }: KanbanColumnProps) => {

@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
-  onDelete: (taskId: number) => void;
+  onDelete: (taskId: string | number) => void;
 }
 
 export const TaskCard = ({ task, onEdit, onDelete }: TaskCardProps) => {
