@@ -36,8 +36,10 @@ export const KanbanColumn = ({ id, title, tasks, onEditTask, onDeleteTask }: Kan
       
       <div
         ref={setNodeRef}
-        className={`flex-1 rounded-xl border-2 border-dashed p-4 transition-smooth min-h-[400px] ${
-          isOver ? 'border-primary bg-primary/5' : 'border-border bg-muted/20'
+        className={`flex-1 rounded-xl border-2 border-dashed p-4 transition-all duration-300 min-h-[400px] ${
+          isOver 
+            ? 'border-primary bg-primary/10 shadow-lg scale-[1.02] ring-2 ring-primary/20' 
+            : 'border-border bg-muted/20 hover:bg-muted/30'
         }`}
       >
         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
