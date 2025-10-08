@@ -2,11 +2,15 @@ import { useState } from 'react';
 import { Task } from '@/types/task';
 import { useTasks } from '@/hooks/useTasks';
 import { useTaskOperations } from '@/hooks/useTaskOperations';
-import { KanbanHeader } from '@/components/kanban/KanbanHeader';
-import { KanbanColumn } from '@/components/kanban/KanbanColumn';
+import { useRealTimeContext } from '@/contexts/RealTimeContext';
 import { Modal } from '@/components/kanban/Modal';
 import { TaskForm } from '@/components/kanban/TaskForm';
+import { TaskCard } from '@/components/kanban/TaskCard';
+import { KanbanColumn } from '@/components/kanban/KanbanColumn';
+import { KanbanHeader } from '@/components/kanban/KanbanHeader';
 import { ConnectionIndicator } from '@/components/kanban/ConnectionIndicator';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useToast } from '@/hooks/use-toast';
 import {
   DndContext,
   DragEndEvent,
@@ -17,8 +21,6 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
-import { TaskCard } from '@/components/kanban/TaskCard';
 
 /**
  * Componente principal del tablero Kanban
@@ -30,10 +32,22 @@ export const KanbanBoard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    taskId: string | number | null;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    taskId: null,
+    title: '',
+    message: ''
+  });
 
   // Hooks personalizados
   const { tasks, loading, error, getTasksByStatus, refetch } = useTasks();
   const { createTask, updateTask, updateTaskPosition, deleteTask } = useTaskOperations();
+  const { toast } = useToast();
 
   // Configuración de sensores para drag & drop
   const sensors = useSensors(
@@ -144,17 +158,28 @@ export const KanbanBoard = () => {
       await createTask({
         title: cleanTaskData.title,
         description: cleanTaskData.description,
-        boardId: 'default-board', // TODO: Obtener del contexto
+        boardId: import.meta.env.VITE_DEFAULT_BOARD_ID || 'default-board',
         columnId: status || 'todo',
         priority: cleanTaskData.priority,
         tags: cleanTaskData.tags,
         dueDate: cleanTaskData.dueDate,
       });
 
-      await refetch();
       setIsModalOpen(false);
+      toast({
+        title: "✅ Tarea creada",
+        description: "La tarea se ha creado correctamente.",
+        variant: "default",
+        duration: 7000,
+      });
+      // No necesitamos refetch manual - el WebSocket lo actualiza automáticamente
     } catch (error) {
-      // Error handling could be improved with user notifications
+      console.error('❌ Error al crear tarea:', error);
+      toast({
+        title: "❌ Error",
+        description: `Error: ${error?.message || 'No se pudo crear la tarea'}`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -181,22 +206,53 @@ export const KanbanBoard = () => {
 
       
       await updateTask(editingTask.id, filteredData);
-      await refetch();
       setEditingTask(undefined);
       setIsModalOpen(false);
+      toast({
+        title: "✅ Tarea actualizada",
+        description: "La tarea se ha actualizada correctamente.",
+        variant: "default",
+        duration: 7000,
+      });
+      // No necesitamos refetch manual - el WebSocket lo actualiza automáticamente
     } catch (error) {
-      // Error handling could be improved with user notifications
+      console.error('❌ Error al actualizar tarea:', error);
+      toast({
+        title: "❌ Error",
+        description: `Error: ${error?.message || 'No se pudo actualizar la tarea'}`,
+        variant: "destructive",
+      });
     }
   };
 
-  const handleDeleteTask = async (taskId: string | number) => {
-    if (confirm('¿Estás seguro de que deseas eliminar esta tarea?')) {
-      try {
-        await deleteTask(taskId);
-        await refetch();
-      } catch (error) {
-        // Error handling could be improved with user notifications
-      }
+  const handleDeleteTask = (taskId: string | number) => {
+    setConfirmDialog({
+      isOpen: true,
+      taskId,
+      title: 'Eliminar Tarea',
+      message: '¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.'
+    });
+  };
+
+  const confirmDeleteTask = async () => {
+    if (!confirmDialog.taskId) return;
+
+    try {
+      await deleteTask(confirmDialog.taskId);
+      toast({
+        title: "✅ Tarea eliminada",
+        description: "La tarea se ha eliminado correctamente.",
+        variant: "default",
+        duration: 7000,
+      });
+      // No necesitamos refetch manual - el WebSocket lo actualiza automáticamente
+    } catch (error) {
+      console.error('❌ Error al eliminar tarea:', error);
+      toast({
+        title: "❌ Error",
+        description: `Error: ${error?.message || 'No se pudo eliminar la tarea'}`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -283,6 +339,18 @@ export const KanbanBoard = () => {
             onCancel={closeModal}
           />
         </Modal>
+
+        {/* Modal de confirmación para eliminar */}
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={confirmDeleteTask}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          variant="danger"
+        />
       </div>
     </div>
   );
