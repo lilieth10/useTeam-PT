@@ -1,9 +1,9 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 
-export interface ApiResponse<T = any> {
-  data: T;
-  success: boolean;
-  message?: string;
+export interface ApiResponse<T = unknown> {
+  readonly data: T;
+  readonly success: boolean;
+  readonly message?: string;
 }
 
 class ApiClient {
@@ -32,23 +32,23 @@ class ApiClient {
   }
 
   // Métodos genéricos
-  async get<T>(url: string, config?: any): Promise<AxiosResponse<ApiResponse<T>>> {
+  async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
     return this.client.get<ApiResponse<T>>(url, config);
   }
 
-  async post<T>(url: string, data?: any, config?: any): Promise<AxiosResponse<ApiResponse<T>>> {
+  async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
     return this.client.post<ApiResponse<T>>(url, data, config);
   }
 
-  async put<T>(url: string, data?: any, config?: any): Promise<AxiosResponse<ApiResponse<T>>> {
+  async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
     return this.client.put<ApiResponse<T>>(url, data, config);
   }
 
-  async patch<T>(url: string, data?: any, config?: any): Promise<AxiosResponse<ApiResponse<T>>> {
+  async patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
     return this.client.patch<ApiResponse<T>>(url, data, config);
   }
 
-  async delete<T>(url: string, config?: any): Promise<AxiosResponse<ApiResponse<T>>> {
+  async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
     return this.client.delete<ApiResponse<T>>(url, config);
   }
 }
