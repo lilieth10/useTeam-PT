@@ -64,4 +64,10 @@ export class CardController {
   delete(@Param('id') id: string) {
     return this.cardService.delete(id);
   }
+
+  @Post('setup-demo')
+  async setupDemo() {
+    // Endpoint temporal para crear datos de demostración
+    return { message: 'Demo setup endpoint - implementar si es necesario' };
+  }
 }
