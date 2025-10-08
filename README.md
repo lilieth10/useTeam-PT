@@ -205,7 +205,6 @@ Ver instrucciones detalladas en: [n8n/setup-instructions.md](./n8n/setup-instruc
 ```bash
 npm run start:dev    # Desarrollo con hot reload
 npm run build        # Build de producción
-npm run test         # Tests unitarios
 ```
 
 **Frontend:**
@@ -228,12 +227,14 @@ docker-compose up n8n -d
 docker-compose up -d
 
 # Ver logs
+docker-compose logs -f
+```
+
 ## 📚 Documentación Adicional
 
 - [Configuración de N8N](./n8n/setup-instructions.md)
 - [Configuración de WebSocket](./backend/src/modules/websocket/)
 - [Esquemas de Base de Datos](./backend/src/database/)
-
 ## 🤝 Contribución
 
 Este proyecto es una prueba técnica desarrollada para **useTeam**.
