@@ -16,12 +16,41 @@ export class TaskService {
         params: boardId ? { boardId } : undefined,
       });
 
-      return response.data.data || [];
+      const rawTasks = Array.isArray(response.data) ? response.data : (response.data.data || []);
+
+      const mappedTasks = rawTasks.map(task => ({
+        ...task,
+        id: task._id || task.id,
+        status: this.mapColumnIdToStatus(task.columnId),
+        createdAt: new Date(task.createdAt || Date.now())
+      }));
+
+      return mappedTasks;
     } catch (error) {
-      console.error('Error fetching tasks:', error);
-      // Fallback a datos locales si el API falla
       return this.getLocalTasks();
     }
+  }
+
+  /**
+   * Mapea columnId del backend a status del frontend
+   */
+  private static mapColumnIdToStatus(columnId: string): 'todo' | 'inProgress' | 'completed' {
+    // Mapeo para strings directos
+    const columnToStatusMap = {
+      'todo': 'todo' as const,
+      'inProgress': 'inProgress' as const,
+      'completed': 'completed' as const,
+    };
+
+    // Mapeo para ObjectIds (de tareas más antiguas)
+    const objectIdToStatusMap = {
+      '507f1f77bcf86cd799439011': 'todo' as const,      // Por Hacer
+      '507f1f77bcf86cd799439012': 'inProgress' as const, // En Progreso  
+      '507f1f77bcf86cd799439013': 'completed' as const,  // Completado
+    };
+    
+    // Primero intentar mapeo directo, luego ObjectId, por defecto 'todo'
+    return columnToStatusMap[columnId] || objectIdToStatusMap[columnId] || 'todo';
   }
 
   /**
@@ -45,7 +74,6 @@ export class TaskService {
       const response = await apiClient.post<Task>(API_ENDPOINTS.CARDS, taskData);
       return response.data.data;
     } catch (error) {
-      console.error('Error creating task:', error);
       throw new Error('No se pudo crear la tarea');
     }
   }
@@ -56,9 +84,16 @@ export class TaskService {
   static async updateTask(taskId: string | number, taskData: UpdateTaskData): Promise<Task> {
     try {
       const response = await apiClient.put<Task>(`${API_ENDPOINTS.CARDS}/${taskId}`, taskData);
-      return response.data.data;
+      const rawTask = response.data as unknown as Task & { _id?: string; columnId: string };
+      
+      const updatedTask: Task = {
+        ...rawTask,
+        id: rawTask._id || rawTask.id,
+        status: this.mapColumnIdToStatus(rawTask.columnId),
+        createdAt: new Date(rawTask.createdAt || Date.now())
+      };
+      return updatedTask;
     } catch (error) {
-      console.error('Error updating task:', error);
       throw new Error('No se pudo actualizar la tarea');
     }
   }
@@ -76,9 +111,16 @@ export class TaskService {
         position: newPosition,
         columnId: newColumnId,
       });
-      return response.data.data;
+      
+      const rawTask = response.data as unknown as Task & { _id?: string; columnId: string };
+      const updatedTask: Task = {
+        ...rawTask,
+        id: rawTask._id || rawTask.id,
+        status: this.mapColumnIdToStatus(rawTask.columnId),
+        createdAt: new Date(rawTask.createdAt || Date.now())
+      };
+      return updatedTask;
     } catch (error) {
-      console.error('Error updating task position:', error);
       throw new Error('No se pudo actualizar la posición de la tarea');
     }
   }
