@@ -20,8 +20,11 @@ export const TaskCard = ({ task, onEdit, onDelete }: TaskCardProps) => {
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 1000 : 'auto',
+    scale: isDragging ? '1.08' : '1',
+    rotate: isDragging ? '5deg' : '0deg',
   };
 
   const formatDate = (date: Date) => {
@@ -47,11 +50,15 @@ export const TaskCard = ({ task, onEdit, onDelete }: TaskCardProps) => {
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-card rounded-lg p-4 shadow-card hover:shadow-card-hover transition-smooth cursor-grab active:cursor-grabbing group"
+      className={`bg-card rounded-lg p-4 shadow-card hover:shadow-card-hover transition-all duration-200 cursor-grab active:cursor-grabbing group border-2 border-transparent hover:border-primary/20 ${
+        isDragging ? 'shadow-2xl border-primary/40 bg-card/90 backdrop-blur-sm rotate-2' : ''
+      }`}
     >
-      <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-semibold text-primary">#{task.id}</span>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-smooth">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1">
+          <h3 className="font-semibold text-foreground text-base mb-1">{task.title}</h3>
+        </div>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 ml-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -78,10 +85,6 @@ export const TaskCard = ({ task, onEdit, onDelete }: TaskCardProps) => {
           </button>
         </div>
       </div>
-      
-      <h3 className="font-semibold text-card-foreground mb-2 line-clamp-2">
-        {task.title}
-      </h3>
       
       <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
         {task.description}
