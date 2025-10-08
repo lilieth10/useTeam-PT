@@ -1,6 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+// Tipos para eventos WebSocket
+type WebSocketEventCallback = (...args: unknown[]) => void;
+
 /**
  * Hook personalizado para gestión de WebSocket
  * Sigue el principio de responsabilidad única (SRP)
@@ -19,15 +22,15 @@ export const useWebSocket = (url?: string) => {
     });
 
     socketRef.current.on('connect', () => {
-      console.log('Connected to WebSocket server');
+      // Conexión establecida
     });
 
     socketRef.current.on('disconnect', () => {
-      console.log('Disconnected from WebSocket server');
+      // Desconexión del servidor
     });
 
-    socketRef.current.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+    socketRef.current.on('connect_error', () => {
+      // Error de conexión
     });
   }, [wsUrl]);
 
@@ -40,14 +43,14 @@ export const useWebSocket = (url?: string) => {
   }, []);
 
   // Suscribirse a eventos
-  const on = useCallback((event: string, callback: (...args: any[]) => void) => {
+  const on = useCallback((event: string, callback: WebSocketEventCallback) => {
     if (socketRef.current) {
       socketRef.current.on(event, callback);
     }
   }, []);
 
   // Desuscribirse de eventos
-  const off = useCallback((event: string, callback?: (...args: any[]) => void) => {
+  const off = useCallback((event: string, callback?: WebSocketEventCallback) => {
     if (socketRef.current) {
       if (callback) {
         socketRef.current.off(event, callback);
@@ -58,7 +61,7 @@ export const useWebSocket = (url?: string) => {
   }, []);
 
   // Emitir eventos
-  const emit = useCallback((event: string, ...args: any[]) => {
+  const emit = useCallback((event: string, ...args: unknown[]) => {
     if (socketRef.current) {
       socketRef.current.emit(event, ...args);
     }
