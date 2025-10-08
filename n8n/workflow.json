@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "functionCode": "// Extraer datos del webhook\nconst boardId = $input.item.json.body.boardId;\nconst cards = $input.item.json.body.cards || [];\nconst email = $input.item.json.body.email;\n\n// Filtrar solo las tarjetas del backlog\nconst backlogCards = cards.filter(card => \n  card.column && card.column.toLowerCase() === 'backlog'\n);\n\n// Transformar datos para CSV\nconst csvData = backlogCards.map(card => ({\n  'ID': card.id || card._id,\n  'Título': card.title,\n  'Descripción': card.description || '',\n  'Columna': card.column,\n  'Fecha de Creación': new Date(card.createdAt).toLocaleString('es-ES')\n}));\n\nreturn {\n  json: {\n    boardId,\n    email,\n    cards: csvData,\n    totalCards: csvData.length,\n    exportDate: new Date().toISOString()\n  }\n};"
+        "functionCode": "// Extraer datos del webhook - usar directamente los datos del backend\nconst webhookData = $input.item.json.body || $input.item.json;\nconst boardId = webhookData.boardId;\nconst tasks = webhookData.tasks || [];\nconst email = webhookData.email;\n\n// NO procesar los datos - usar tal como vienen del backend\n// El backend ya los formateó correctamente\nconst result = {\n  boardId,\n  email,\n  cards: tasks, // Usar directamente sin modificar\n  totalCards: tasks.length,\n  exportDate: new Date().toISOString()\n};\n\nreturn { json: result };"
       },
       "id": "process-data",
       "name": "Process Data",
@@ -29,7 +29,7 @@
         "operation": "toFile",
         "fileFormat": "csv",
         "options": {
-          "fileName": "backlog-export-{{$json.exportDate}}.csv",
+          "fileName": "Backlog_Kanban_{{new Date().toISOString().split('T')[0]}}.csv",
           "headerRow": true
         }
       },

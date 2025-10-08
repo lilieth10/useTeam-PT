@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Task, TaskStatus } from '@/types/task';
 import { TaskService } from '@/services/taskService';
 import { filterTasks, sortTasksByPosition } from '@/utils/taskUtils';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 /**
  * Hook personalizado para gestión de tareas
@@ -11,6 +12,7 @@ export const useTasks = (boardId?: string) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isConnected, on, off } = useWebSocket();
 
   // Estado para filtros
   const [filters, setFilters] = useState<{
@@ -38,6 +40,40 @@ export const useTasks = (boardId?: string) => {
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
+
+  // Escuchar eventos WebSocket para actualizar en tiempo real
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const handleCardCreated = () => {
+      fetchTasks();
+    };
+
+    const handleCardUpdated = () => {
+      fetchTasks();
+    };
+
+    const handleCardDeleted = () => {
+      fetchTasks();
+    };
+
+    const handleCardMoved = () => {
+      fetchTasks();
+    };
+
+    // Suscribirse a eventos
+    on('card:created', handleCardCreated);
+    on('card:updated', handleCardUpdated);
+    on('card:deleted', handleCardDeleted);
+    on('card:moved', handleCardMoved);
+
+    return () => {
+      off('card:created', handleCardCreated);
+      off('card:updated', handleCardUpdated);
+      off('card:deleted', handleCardDeleted);
+      off('card:moved', handleCardMoved);
+    };
+  }, [isConnected, on, off, fetchTasks]);
 
   // Filtrar tareas según criterios actuales
   const filteredTasks = filterTasks(tasks, filters);

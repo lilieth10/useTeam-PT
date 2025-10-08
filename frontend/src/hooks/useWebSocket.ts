@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 // Tipos para eventos WebSocket
@@ -10,7 +10,7 @@ type WebSocketEventCallback = (...args: unknown[]) => void;
  */
 export const useWebSocket = (url?: string) => {
   const socketRef = useRef<Socket | null>(null);
-  const wsUrl = url || import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
+  const wsUrl = url || import.meta.env.VITE_WS_URL || 'http://localhost:3000';
 
   // Conectar al servidor WebSocket
   const connect = useCallback(() => {
@@ -22,15 +22,15 @@ export const useWebSocket = (url?: string) => {
     });
 
     socketRef.current.on('connect', () => {
-      // Conexión establecida
+      // WebSocket conectado
     });
 
     socketRef.current.on('disconnect', () => {
-      // Desconexión del servidor
+      // WebSocket desconectado
     });
 
-    socketRef.current.on('connect_error', () => {
-      // Error de conexión
+    socketRef.current.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error);
     });
   }, [wsUrl]);
 
@@ -77,9 +77,35 @@ export const useWebSocket = (url?: string) => {
     };
   }, [connect, disconnect]);
 
+  // Estado reactivo de conexión
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Actualizar estado cuando cambie la conexión
+  useEffect(() => {
+    if (socketRef.current) {
+      const updateConnectionStatus = () => {
+        const connected = socketRef.current?.connected || false;
+        setIsConnected(connected);
+      };
+
+      socketRef.current.on('connect', updateConnectionStatus);
+      socketRef.current.on('disconnect', updateConnectionStatus);
+
+      // Verificar estado inicial
+      updateConnectionStatus();
+
+      return () => {
+        if (socketRef.current) {
+          socketRef.current.off('connect', updateConnectionStatus);
+          socketRef.current.off('disconnect', updateConnectionStatus);
+        }
+      };
+    }
+  }, []);
+
   return {
     socket: socketRef.current,
-    isConnected: socketRef.current?.connected || false,
+    isConnected,
     connect,
     disconnect,
     on,
