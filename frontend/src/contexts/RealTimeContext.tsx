@@ -2,6 +2,16 @@ import { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useKanbanContext } from '@/contexts/KanbanContext';
 
+// Interfaces para tipado seguro
+interface CardEventData {
+  cardId?: string;
+  title?: string;
+  description?: string;
+  columnId?: string;
+  newColumnId?: string;
+  position?: number;
+}
+
 /**
  * Contexto para gestión de actualizaciones en tiempo real
  * Sigue el principio de inversión de dependencias (DIP)
@@ -36,19 +46,16 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
   useEffect(() => {
     if (!isConnected) return;
 
-    const handleCardCreated = (data: any) => {
-      console.log('Card created:', data);
+    const handleCardCreated = (data: CardEventData) => {
       // Aquí se podría actualizar el estado global si fuera necesario
-      // Por ahora solo logueamos el evento
+      // Por ahora solo manejamos el evento sin logs
     };
 
-    const handleCardUpdated = (data: any) => {
-      console.log('Card updated:', data);
+    const handleCardUpdated = (data: CardEventData) => {
       // Aquí se podría actualizar el estado global si fuera necesario
     };
 
-    const handleCardDeleted = (data: any) => {
-      console.log('Card deleted:', data);
+    const handleCardDeleted = (data: CardEventData) => {
       // Aquí se podría actualizar el estado global si fuera necesario
     };
 
