@@ -21,7 +21,7 @@ export class CreateCardDto {
 
   @IsString()
   @IsNotEmpty()
-  columnId: string;
+  columnId: string; // Puede ser un ObjectId o un status (todo, inProgress, completed)
 
   @IsNumber()
   @IsOptional()
