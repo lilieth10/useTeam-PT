@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useKanbanContext } from '@/contexts/KanbanContext';
 import { useToast } from '@/hooks/use-toast';
+import { Task } from '@/types/task';
 
 // Interfaces para tipado seguro
 interface CardEventData {
@@ -38,7 +39,7 @@ interface RealTimeProviderProps {
 
 export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
   const { isConnected, on, off, socket } = useWebSocket();
-  const { setTasks, setError } = useKanbanContext();
+  const { tasks, setTasks, setError } = useKanbanContext();
   const { toast } = useToast();
 
   // Estado de conexión
@@ -53,7 +54,6 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
         title: "🆕 Nueva tarea",
         description: `Se creó la tarea: ${data.title || 'Sin título'}`,
         variant: "default",
-        duration: 7000,
       });
     };
 
@@ -62,7 +62,6 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
         title: "✏️ Tarea actualizada",
         description: `Se actualizó la tarea: ${data.title || 'Sin título'}`,
         variant: "default",
-        duration: 7000,
       });
     };
 
@@ -71,7 +70,6 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
         title: "🗑️ Tarea eliminada",
         description: "Una tarea fue eliminada por otro usuario",
         variant: "destructive",
-        duration: 7000,
       });
     };
 
@@ -84,9 +82,8 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
         };
         return columns[columnId as keyof typeof columns] || columnId;
       };
-
-      // Determinar si cambió de columna o solo posición
-      const columnName = data.newColumnId ? getColumnName(data.newColumnId) : 'nueva posición';
+      
+      const columnName = getColumnName(data.newColumnId || data.columnId || '');
       const isPositionChange = data.columnId === data.newColumnId;
       
       const description = isPositionChange 
@@ -97,7 +94,6 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
         title: isPositionChange ? "↕️ Posición actualizada" : "🔄 Tarea movida",
         description,
         variant: "default",
-        duration: 7000,
       });
     };
 

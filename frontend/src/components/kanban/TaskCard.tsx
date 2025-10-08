@@ -1,6 +1,7 @@
 import { Task } from '@/types/task';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { motion } from 'framer-motion';
 
 interface TaskCardProps {
   task: Task;
@@ -45,13 +46,30 @@ export const TaskCard = ({ task, onEdit, onDelete }: TaskCardProps) => {
   };
 
   return (
-    <div
+    <motion.div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-card rounded-lg p-4 shadow-card hover:shadow-card-hover transition-all duration-200 cursor-grab active:cursor-grabbing group border-2 border-transparent hover:border-primary/20 ${
-        isDragging ? 'shadow-2xl border-primary/40 bg-card/90 backdrop-blur-sm rotate-2' : ''
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      whileHover={{ 
+        scale: 1.08,
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 10px 20px -5px rgba(0, 0, 0, 0.1)",
+        y: -5
+      }}
+      whileTap={{ scale: 0.92, y: 2 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 400, 
+        damping: 25,
+        opacity: { duration: 0.2 },
+        y: { duration: 0.3 },
+        scale: { duration: 0.2 }
+      }}
+      className={`bg-card rounded-xl p-5 shadow-lg border border-border/50 cursor-grab active:cursor-grabbing group backdrop-blur-sm ${
+        isDragging ? 'shadow-2xl border-primary/40 bg-card/95 rotate-2' : 'hover:border-primary/30'
       }`}
     >
       <div className="flex items-start justify-between mb-3">
@@ -96,6 +114,6 @@ export const TaskCard = ({ task, onEdit, onDelete }: TaskCardProps) => {
           {getStatusLabel(task.status)}
         </span>
       </div>
-    </div>
+    </motion.div>
   );
 };

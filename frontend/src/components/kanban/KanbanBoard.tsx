@@ -8,9 +8,9 @@ import { TaskForm } from '@/components/kanban/TaskForm';
 import { TaskCard } from '@/components/kanban/TaskCard';
 import { KanbanColumn } from '@/components/kanban/KanbanColumn';
 import { KanbanHeader } from '@/components/kanban/KanbanHeader';
-import { ConnectionIndicator } from '@/components/kanban/ConnectionIndicator';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/hooks/use-toast';
+import { motion } from 'framer-motion';
 import {
   DndContext,
   DragEndEvent,
@@ -119,23 +119,28 @@ export const KanbanBoard = () => {
 
     try {
       if (activeTask.status !== newStatus) {
+        // Movimiento entre columnas
         const newColumnId = mapStatusToColumnId(newStatus);
         await updateTaskPosition(activeTask.id, 0, newColumnId);
       } else {
+        // Movimiento dentro de la misma columna - usar índice directamente
         const tasksInColumn = tasks.filter(t => t.status === activeTask.status);
-        const activeIndex = tasksInColumn.findIndex(t => t.id.toString() === activeId);
         const overIndex = tasksInColumn.findIndex(t => t.id.toString() === overId);
-        
-        if (activeIndex !== overIndex) {
-          const newPosition = overIndex;
+
+        if (overIndex !== -1) {
           const newColumnId = mapStatusToColumnId(activeTask.status);
-          await updateTaskPosition(activeTask.id, newPosition, newColumnId);
+          await updateTaskPosition(activeTask.id, overIndex, newColumnId);
         }
       }
 
-      await refetch();
+      // No refetch - WebSocket actualiza automáticamente
     } catch (error) {
-      // Error handling could be improved with user notifications
+      console.error('Error moving task:', error);
+      toast({
+        title: "❌ Error",
+        description: "No se pudo mover la tarea",
+        variant: "destructive",
+      });
     }
   };
 
@@ -143,7 +148,7 @@ export const KanbanBoard = () => {
   const mapStatusToColumnId = (status: string): string => {
     const statusToColumnMap = {
       'todo': 'todo',
-      'inProgress': 'inProgress', 
+      'inProgress': 'inProgress',
       'completed': 'completed'
     };
     return statusToColumnMap[status] || 'todo';
@@ -170,7 +175,6 @@ export const KanbanBoard = () => {
         title: "✅ Tarea creada",
         description: "La tarea se ha creado correctamente.",
         variant: "default",
-        duration: 7000,
       });
       // No necesitamos refetch manual - el WebSocket lo actualiza automáticamente
     } catch (error) {
@@ -212,7 +216,6 @@ export const KanbanBoard = () => {
         title: "✅ Tarea actualizada",
         description: "La tarea se ha actualizada correctamente.",
         variant: "default",
-        duration: 7000,
       });
       // No necesitamos refetch manual - el WebSocket lo actualiza automáticamente
     } catch (error) {
@@ -243,7 +246,6 @@ export const KanbanBoard = () => {
         title: "✅ Tarea eliminada",
         description: "La tarea se ha eliminado correctamente.",
         variant: "default",
-        duration: 7000,
       });
       // No necesitamos refetch manual - el WebSocket lo actualiza automáticamente
     } catch (error) {
@@ -289,8 +291,12 @@ export const KanbanBoard = () => {
   }
 
   return (
-    <div className="min-h-screen p-6">
-      <ConnectionIndicator />
+    <motion.div 
+      className="min-h-screen p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="max-w-7xl mx-auto">
         <KanbanHeader onCreateTask={openCreateModal} />
 
@@ -300,18 +306,35 @@ export const KanbanBoard = () => {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {columns.map((column) => (
-              <KanbanColumn
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            {columns.map((column, index) => (
+              <motion.div
                 key={column.id}
-                id={column.id}
-                title={column.title}
-                tasks={getTasksByStatus(column.id as 'todo' | 'inProgress' | 'completed')}
-                onEditTask={openEditModal}
-                onDeleteTask={handleDeleteTask}
-              />
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.3, 
+                  delay: 0.1 + (index * 0.05),
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 30
+                }}
+              >
+                <KanbanColumn
+                  id={column.id}
+                  title={column.title}
+                  tasks={getTasksByStatus(column.id as 'todo' | 'inProgress' | 'completed')}
+                  onEditTask={openEditModal}
+                  onDeleteTask={handleDeleteTask}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           <DragOverlay>
             {activeTask ? (
@@ -352,6 +375,6 @@ export const KanbanBoard = () => {
           variant="danger"
         />
       </div>
-    </div>
+    </motion.div>
   );
 };
