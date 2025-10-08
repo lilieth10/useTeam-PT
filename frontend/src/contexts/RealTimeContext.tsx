@@ -36,7 +36,7 @@ interface RealTimeProviderProps {
 }
 
 export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
-  const { isConnected } = useWebSocket();
+  const { isConnected, on, off } = useWebSocket();
   const { setTasks, setError } = useKanbanContext();
 
   // Estado de conexión
@@ -47,30 +47,43 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
     if (!isConnected) return;
 
     const handleCardCreated = (data: CardEventData) => {
-      // Aquí se podría actualizar el estado global si fuera necesario
-      // Por ahora solo manejamos el evento sin logs
+      console.log('🔄 Tarjeta creada en tiempo real:', data);
+      // Refrescar las tareas para mostrar la nueva tarjeta
+      window.location.reload(); // Temporal - mejorar con estado
     };
 
     const handleCardUpdated = (data: CardEventData) => {
-      // Aquí se podría actualizar el estado global si fuera necesario
+      console.log('🔄 Tarjeta actualizada en tiempo real:', data);
+      // Refrescar las tareas para mostrar los cambios
+      window.location.reload(); // Temporal - mejorar con estado
     };
 
-    const handleCardDeleted = (data: CardEventData) => {
-      // Aquí se podría actualizar el estado global si fuera necesario
+    const handleCardDeleted = (cardId: string) => {
+      console.log('🔄 Tarjeta eliminada en tiempo real:', cardId);
+      // Refrescar las tareas para ocultar la tarjeta eliminada
+      window.location.reload(); // Temporal - mejorar con estado
+    };
+
+    const handleCardMoved = (data: CardEventData) => {
+      console.log('🔄 Tarjeta movida en tiempo real:', data);
+      // Refrescar las tareas para mostrar la nueva posición
+      window.location.reload(); // Temporal - mejorar con estado
     };
 
     // Suscribirse a eventos
-    const { on } = useWebSocket();
-
     on('card:created', handleCardCreated);
     on('card:updated', handleCardUpdated);
     on('card:deleted', handleCardDeleted);
+    on('card:moved', handleCardMoved);
 
     // Cleanup
     return () => {
-      // Los eventos se limpiarán automáticamente cuando se desmonte el componente
+      off('card:created', handleCardCreated);
+      off('card:updated', handleCardUpdated);
+      off('card:deleted', handleCardDeleted);
+      off('card:moved', handleCardMoved);
     };
-  }, [isConnected]);
+  }, [isConnected, on, off]);
 
   const value = {
     isConnected,
