@@ -1,5 +1,10 @@
-import { apiClient } from '@/services/apiClient';
+import { apiClient, ApiResponse } from '@/services/apiClient';
 import { API_ENDPOINTS } from '@/utils/constants';
+
+// Interface específica para la respuesta de exportación
+interface ExportBacklogResponse {
+  message: string;
+}
 
 /**
  * Servicio para gestionar operaciones de exportación
@@ -15,17 +20,25 @@ export class ExportService {
     fields?: string[];
   } = {}): Promise<{ success: boolean; message: string; jobId?: string }> {
     try {
-      const response = await apiClient.post(`${API_ENDPOINTS.EXPORT}/backlog`, options);
+      const response = await apiClient.post<ExportBacklogResponse>(`${API_ENDPOINTS.EXPORT}/backlog`, options);
 
+      // Si n8n inició el flujo, la respuesta será exitosa.
+      if (response.data && response.data.message === 'Workflow was started') {
+        return {
+          success: true,
+          message: 'Exportación iniciada correctamente. Recibirás el archivo por email.',
+        };
+      }
+
+      // Manejar respuestas inesperadas del backend.
       return {
-        success: response.data.success,
-        message: response.data.message,
-        jobId: response.data.jobId,
+        success: false,
+        message: response.data.message || 'Respuesta inesperada del servidor.',
       };
     } catch (error) {
       console.error('Error exporting backlog:', error);
 
-      // Fallback para desarrollo
+      // Fallback para desarrollo si el servicio no está disponible.
       return {
         success: false,
         message: 'Error al exportar backlog. El servicio N8N no está disponible.',
