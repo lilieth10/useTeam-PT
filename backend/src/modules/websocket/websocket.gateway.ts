@@ -10,6 +10,33 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 
+// Interfaces para tipado seguro
+interface CardEventData {
+  cardId?: string;
+  title?: string;
+  description?: string;
+  columnId?: string;
+  newColumnId?: string;
+  position?: number;
+}
+
+interface ColumnEventData {
+  columnId?: string;
+  title?: string;
+  position?: number;
+}
+
+interface ExportEventData {
+  email?: string;
+  boardId?: string;
+  fields?: string[];
+}
+
+interface WebSocketResponse {
+  success: boolean;
+  message: string;
+}
+
 @WebSocketGateway({
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3001',
@@ -34,30 +61,29 @@ export class KanbanWebSocketGateway implements OnGatewayConnection, OnGatewayDis
   // ========== EVENTOS DE TARJETAS ==========
   
   @SubscribeMessage('card:create')
-  handleCardCreate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    this.logger.log(`Tarjeta creada: ${data.title}`);
-    // Emitir a todos los clientes excepto al que envió
+  handleCardCreate(@MessageBody() data: CardEventData, @ConnectedSocket() client: Socket): WebSocketResponse {
+    this.logger.log(`Tarjeta creada: ${data.title || 'Sin título'}`);
     client.broadcast.emit('card:created', data);
     return { success: true, message: 'Tarjeta creada' };
   }
 
   @SubscribeMessage('card:update')
-  handleCardUpdate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    this.logger.log(`Tarjeta actualizada: ${data.cardId}`);
+  handleCardUpdate(@MessageBody() data: CardEventData, @ConnectedSocket() client: Socket): WebSocketResponse {
+    this.logger.log(`Tarjeta actualizada: ${data.cardId || 'ID desconocido'}`);
     client.broadcast.emit('card:updated', data);
     return { success: true, message: 'Tarjeta actualizada' };
   }
 
   @SubscribeMessage('card:delete')
-  handleCardDelete(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    this.logger.log(`Tarjeta eliminada: ${data.cardId}`);
+  handleCardDelete(@MessageBody() data: CardEventData, @ConnectedSocket() client: Socket): WebSocketResponse {
+    this.logger.log(`Tarjeta eliminada: ${data.cardId || 'ID desconocido'}`);
     client.broadcast.emit('card:deleted', data.cardId);
     return { success: true, message: 'Tarjeta eliminada' };
   }
 
   @SubscribeMessage('card:move')
-  handleCardMove(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    this.logger.log(`Tarjeta movida: ${data.cardId} -> ${data.newColumnId}`);
+  handleCardMove(@MessageBody() data: CardEventData, @ConnectedSocket() client: Socket): WebSocketResponse {
+    this.logger.log(`Tarjeta movida: ${data.cardId || 'ID desconocido'} -> ${data.newColumnId || 'Columna desconocida'}`);
     client.broadcast.emit('card:moved', data);
     return { success: true, message: 'Tarjeta movida' };
   }
@@ -65,15 +91,15 @@ export class KanbanWebSocketGateway implements OnGatewayConnection, OnGatewayDis
   // ========== EVENTOS DE COLUMNAS ==========
 
   @SubscribeMessage('column:create')
-  handleColumnCreate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    this.logger.log(`Columna creada: ${data.title}`);
+  handleColumnCreate(@MessageBody() data: ColumnEventData, @ConnectedSocket() client: Socket): WebSocketResponse {
+    this.logger.log(`Columna creada: ${data.title || 'Sin título'}`);
     client.broadcast.emit('column:created', data);
     return { success: true, message: 'Columna creada' };
   }
 
   @SubscribeMessage('column:update')
-  handleColumnUpdate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    this.logger.log(`Columna actualizada: ${data.columnId}`);
+  handleColumnUpdate(@MessageBody() data: ColumnEventData, @ConnectedSocket() client: Socket): WebSocketResponse {
+    this.logger.log(`Columna actualizada: ${data.columnId || 'ID desconocido'}`);
     client.broadcast.emit('column:updated', data);
     return { success: true, message: 'Columna actualizada' };
   }
@@ -81,36 +107,35 @@ export class KanbanWebSocketGateway implements OnGatewayConnection, OnGatewayDis
   // ========== EVENTOS DE EXPORTACIÓN ==========
 
   @SubscribeMessage('export:request')
-  handleExportRequest(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    this.logger.log(`Solicitud de exportación: ${data.email}`);
-    // Aquí se conectará con N8N más adelante
+  handleExportRequest(@MessageBody() data: ExportEventData, @ConnectedSocket() client: Socket): WebSocketResponse {
+    this.logger.log(`Solicitud de exportación: ${data.email || 'Email no especificado'}`);
     client.emit('export:processing', { message: 'Procesando exportación...' });
     return { success: true, message: 'Exportación iniciada' };
   }
 
   // ========== MÉTODOS PÚBLICOS PARA OTROS SERVICIOS ==========
 
-  emitCardCreated(card: any) {
+  emitCardCreated(card: CardEventData): void {
     this.server.emit('card:created', card);
   }
 
-  emitCardUpdated(card: any) {
+  emitCardUpdated(card: CardEventData): void {
     this.server.emit('card:updated', card);
   }
 
-  emitCardDeleted(cardId: string) {
+  emitCardDeleted(cardId: string): void {
     this.server.emit('card:deleted', cardId);
   }
 
-  emitCardMoved(card: any) {
+  emitCardMoved(card: CardEventData): void {
     this.server.emit('card:moved', card);
   }
 
-  emitExportSuccess(data: any) {
+  emitExportSuccess(data: ExportEventData): void {
     this.server.emit('export:success', data);
   }
 
-  emitExportError(error: any) {
+  emitExportError(error: { message: string; code?: string }): void {
     this.server.emit('export:error', error);
   }
 }
