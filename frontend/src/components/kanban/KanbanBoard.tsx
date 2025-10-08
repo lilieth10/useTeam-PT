@@ -39,7 +39,7 @@ export const KanbanBoard = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 3, // Menor distancia para activar más rápido
       },
     })
   );
@@ -72,7 +72,7 @@ export const KanbanBoard = () => {
     if (!activeTask) return;
 
     const activeStatus = activeTask.status;
-    const overStatus = overTask?.status || (overId as any);
+    const overStatus = overTask?.status || (overId as 'todo' | 'inProgress' | 'completed');
 
     if (activeStatus === overStatus) {
       // Reordenamiento dentro de la misma columna
@@ -95,38 +95,66 @@ export const KanbanBoard = () => {
     const activeId = active.id.toString();
     const overId = over.id.toString();
 
+    if (activeId === overId) return;
+
     const activeTask = tasks.find((t) => t.id.toString() === activeId);
     if (!activeTask) return;
 
     const overTask = tasks.find((t) => t.id.toString() === overId);
-    const newStatus = overTask?.status || (overId as any);
+    const newStatus = overTask?.status || (overId as 'todo' | 'inProgress' | 'completed');
 
-    if (activeTask.status !== newStatus) {
-      try {
-        // Actualizar posición y columna en el backend
-        await updateTaskPosition(activeTask.id, 0, newStatus);
-
-        // Refrescar datos
-        await refetch();
-      } catch (error) {
-        console.error('Error updating task position:', error);
+    try {
+      if (activeTask.status !== newStatus) {
+        const newColumnId = mapStatusToColumnId(newStatus);
+        await updateTaskPosition(activeTask.id, 0, newColumnId);
+      } else {
+        const tasksInColumn = tasks.filter(t => t.status === activeTask.status);
+        const activeIndex = tasksInColumn.findIndex(t => t.id.toString() === activeId);
+        const overIndex = tasksInColumn.findIndex(t => t.id.toString() === overId);
+        
+        if (activeIndex !== overIndex) {
+          const newPosition = overIndex;
+          const newColumnId = mapStatusToColumnId(activeTask.status);
+          await updateTaskPosition(activeTask.id, newPosition, newColumnId);
+        }
       }
+
+      await refetch();
+    } catch (error) {
+      // Error handling could be improved with user notifications
     }
+  };
+
+  // Mapear status del frontend a columnId del backend
+  const mapStatusToColumnId = (status: string): string => {
+    const statusToColumnMap = {
+      'todo': 'todo',
+      'inProgress': 'inProgress', 
+      'completed': 'completed'
+    };
+    return statusToColumnMap[status] || 'todo';
   };
 
   // Manejadores CRUD
   const handleCreateTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
     try {
+      // Extraer solo los campos que necesita el backend
+      const { status, ...cleanTaskData } = taskData;
+      
       await createTask({
-        ...taskData,
+        title: cleanTaskData.title,
+        description: cleanTaskData.description,
         boardId: 'default-board', // TODO: Obtener del contexto
-        columnId: taskData.status || 'todo',
+        columnId: status || 'todo',
+        priority: cleanTaskData.priority,
+        tags: cleanTaskData.tags,
+        dueDate: cleanTaskData.dueDate,
       });
 
       await refetch();
       setIsModalOpen(false);
     } catch (error) {
-      console.error('Error creating task:', error);
+      // Error handling could be improved with user notifications
     }
   };
 
@@ -134,12 +162,30 @@ export const KanbanBoard = () => {
     if (!editingTask) return;
 
     try {
-      await updateTask(editingTask.id, taskData);
+      // Extraer solo los campos que necesita el backend, excluyendo campos del frontend
+      const { status, position, boardId, columnId, ...cleanTaskData } = taskData;
+      
+      // Preparar datos limpios para el backend
+      const updateData = {
+        title: cleanTaskData.title,
+        description: cleanTaskData.description,
+        priority: cleanTaskData.priority,
+        tags: cleanTaskData.tags,
+        dueDate: cleanTaskData.dueDate,
+      };
+
+      // Filtrar campos undefined
+      const filteredData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, value]) => value !== undefined)
+      );
+
+      
+      await updateTask(editingTask.id, filteredData);
       await refetch();
       setEditingTask(undefined);
       setIsModalOpen(false);
     } catch (error) {
-      console.error('Error updating task:', error);
+      // Error handling could be improved with user notifications
     }
   };
 
@@ -149,7 +195,7 @@ export const KanbanBoard = () => {
         await deleteTask(taskId);
         await refetch();
       } catch (error) {
-        console.error('Error deleting task:', error);
+        // Error handling could be improved with user notifications
       }
     }
   };
@@ -204,7 +250,7 @@ export const KanbanBoard = () => {
                 key={column.id}
                 id={column.id}
                 title={column.title}
-                tasks={getTasksByStatus(column.id as any)}
+                tasks={getTasksByStatus(column.id as 'todo' | 'inProgress' | 'completed')}
                 onEditTask={openEditModal}
                 onDeleteTask={handleDeleteTask}
               />
@@ -213,12 +259,14 @@ export const KanbanBoard = () => {
 
           <DragOverlay>
             {activeTask ? (
-              <div className="rotate-3 opacity-90">
-                <TaskCard
-                  task={activeTask}
-                  onEdit={() => {}}
-                  onDelete={() => {}}
-                />
+              <div className="rotate-6 scale-110 opacity-90 shadow-2xl ring-4 ring-primary/50 rounded-lg transform-gpu">
+                <div className="bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-sm rounded-lg">
+                  <TaskCard
+                    task={activeTask}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                  />
+                </div>
               </div>
             ) : null}
           </DragOverlay>
