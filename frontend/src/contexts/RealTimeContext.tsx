@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useKanbanContext } from '@/contexts/KanbanContext';
+import { useToast } from '@/hooks/use-toast';
 
 // Interfaces para tipado seguro
 interface CardEventData {
@@ -36,8 +37,9 @@ interface RealTimeProviderProps {
 }
 
 export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
-  const { isConnected, on, off } = useWebSocket();
+  const { isConnected, on, off, socket } = useWebSocket();
   const { setTasks, setError } = useKanbanContext();
+  const { toast } = useToast();
 
   // Estado de conexión
   const connectionStatus: 'connected' | 'disconnected' | 'connecting' = isConnected ? 'connected' : 'disconnected';
@@ -47,27 +49,56 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
     if (!isConnected) return;
 
     const handleCardCreated = (data: CardEventData) => {
-      console.log('🔄 Tarjeta creada en tiempo real:', data);
-      // Refrescar las tareas para mostrar la nueva tarjeta
-      window.location.reload(); // Temporal - mejorar con estado
+      toast({
+        title: "🆕 Nueva tarea",
+        description: `Se creó la tarea: ${data.title || 'Sin título'}`,
+        variant: "default",
+        duration: 7000,
+      });
     };
 
     const handleCardUpdated = (data: CardEventData) => {
-      console.log('🔄 Tarjeta actualizada en tiempo real:', data);
-      // Refrescar las tareas para mostrar los cambios
-      window.location.reload(); // Temporal - mejorar con estado
+      toast({
+        title: "✏️ Tarea actualizada",
+        description: `Se actualizó la tarea: ${data.title || 'Sin título'}`,
+        variant: "default",
+        duration: 7000,
+      });
     };
 
     const handleCardDeleted = (cardId: string) => {
-      console.log('🔄 Tarjeta eliminada en tiempo real:', cardId);
-      // Refrescar las tareas para ocultar la tarjeta eliminada
-      window.location.reload(); // Temporal - mejorar con estado
+      toast({
+        title: "🗑️ Tarea eliminada",
+        description: "Una tarea fue eliminada por otro usuario",
+        variant: "destructive",
+        duration: 7000,
+      });
     };
 
     const handleCardMoved = (data: CardEventData) => {
-      console.log('🔄 Tarjeta movida en tiempo real:', data);
-      // Refrescar las tareas para mostrar la nueva posición
-      window.location.reload(); // Temporal - mejorar con estado
+      const getColumnName = (columnId: string) => {
+        const columns = {
+          'todo': 'Por hacer',
+          'inProgress': 'En progreso', 
+          'completed': 'Completadas'
+        };
+        return columns[columnId as keyof typeof columns] || columnId;
+      };
+
+      // Determinar si cambió de columna o solo posición
+      const columnName = data.newColumnId ? getColumnName(data.newColumnId) : 'nueva posición';
+      const isPositionChange = data.columnId === data.newColumnId;
+      
+      const description = isPositionChange 
+        ? `"${data.title || 'Sin título'}" cambió de posición en ${columnName}`
+        : `"${data.title || 'Sin título'}" se movió a ${columnName}`;
+      
+      toast({
+        title: isPositionChange ? "↕️ Posición actualizada" : "🔄 Tarea movida",
+        description,
+        variant: "default",
+        duration: 7000,
+      });
     };
 
     // Suscribirse a eventos
@@ -83,7 +114,7 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
       off('card:deleted', handleCardDeleted);
       off('card:moved', handleCardMoved);
     };
-  }, [isConnected, on, off]);
+  }, [isConnected, on, off, toast]);
 
   const value = {
     isConnected,
