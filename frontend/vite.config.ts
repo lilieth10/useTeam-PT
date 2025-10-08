@@ -14,4 +14,20 @@ export default defineConfig(() => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separar librerías grandes en chunks independientes
+          vendor: ['react', 'react-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-toast', '@radix-ui/react-label'],
+          dnd: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          animations: ['framer-motion'],
+          utils: ['axios', 'clsx', 'tailwind-merge'],
+        },
+      },
+    },
+    // Ajustar límite de warning para chunks grandes
+    chunkSizeWarningLimit: 600,
+  },
 }));
