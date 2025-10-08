@@ -25,15 +25,11 @@ export class N8nService {
     this.webhookUrl = this.configService.get<string>('N8N_WEBHOOK_URL') || 
       'https://automation.useteam.io/webhook/webhook/kanban-export';
   }
-
   /**
    * Envía datos al webhook de N8N para procesamiento
    */
   async triggerExportWorkflow(payload: N8nExportPayload): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('🚀 Enviando a N8N:', this.webhookUrl);
-      console.log('📦 Payload:', JSON.stringify(payload, null, 2));
-      
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
         headers: {
@@ -41,24 +37,17 @@ export class N8nService {
         },
         body: JSON.stringify(payload),
       });
-
-      console.log('📡 Respuesta N8N status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.log('❌ Error N8N:', errorText);
         throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
-      const result = await response.text();
-      console.log('✅ Respuesta N8N:', result);
-
       return {
         success: true,
-        message: 'Exportación iniciada correctamente',
+        message: 'Workflow triggered successfully',
       };
     } catch (error) {
-      console.error('💥 Error completo:', error);
       throw new HttpException(
         {
           success: false,

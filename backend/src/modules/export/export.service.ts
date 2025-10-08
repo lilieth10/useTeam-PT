@@ -23,9 +23,11 @@ export class ExportService {
 
       const exportData = this.prepareExportData(cards, columns, exportDto.fields);
 
+      const finalEmail = exportDto.email || process.env.EMAIL_TO || 'admin@useteam.io';
+
       const payload = {
         boardId: exportDto.boardId,
-        email: exportDto.email || 'admin@useteam.io',
+        email: finalEmail,
         fields: exportDto.fields || ['id', 'title', 'description', 'column', 'createdAt'],
         tasks: exportData,
       };
