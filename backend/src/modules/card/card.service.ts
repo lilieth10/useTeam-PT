@@ -4,11 +4,13 @@ import { Model } from 'mongoose';
 import { Card, CardDocument } from '../../database/schemas/card.schema';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import { KanbanWebSocketGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
 export class CardService {
   constructor(
     @InjectModel(Card.name) private cardModel: Model<CardDocument>,
+    private readonly webSocketGateway: KanbanWebSocketGateway,
   ) {}
 
   async create(createCardDto: CreateCardDto): Promise<Card> {
@@ -35,6 +37,14 @@ export class CardService {
 
       const createdCard = new this.cardModel(cardData);
       const savedCard = await createdCard.save();
+      
+      // Emitir evento WebSocket
+      this.webSocketGateway.emitCardCreated({
+        cardId: savedCard._id.toString(),
+        title: savedCard.title,
+        description: savedCard.description,
+        columnId: savedCard.columnId.toString(),
+      });
       
       return savedCard;
     } catch (error) {
@@ -99,6 +109,14 @@ export class CardService {
         throw new NotFoundException(`Card with ID ${id} not found`);
       }
 
+      // Emitir evento WebSocket
+      this.webSocketGateway.emitCardUpdated({
+        cardId: updatedCard._id.toString(),
+        title: updatedCard.title,
+        description: updatedCard.description,
+        columnId: updatedCard.columnId.toString(),
+      });
+
       return updatedCard;
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -139,6 +157,16 @@ export class CardService {
         throw new NotFoundException(`Error al actualizar la tarjeta con ID ${cardId}`);
       }
 
+      // Emitir evento WebSocket para drag & drop
+      this.webSocketGateway.emitCardMoved({
+        cardId: updatedCard._id.toString(),
+        title: updatedCard.title,
+        description: updatedCard.description,
+        position: newPosition,
+        columnId: existingCard.columnId.toString(), // Columna original
+        newColumnId: newColumnId || updatedCard.columnId.toString(), // Columna destino
+      });
+
       return updatedCard;
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
@@ -156,6 +184,9 @@ export class CardService {
     if (!result) {
       throw new NotFoundException(`Card with ID ${id} not found`);
     }
+
+    // Emitir evento WebSocket para soft delete
+    this.webSocketGateway.emitCardDeleted(id);
   }
 
   async delete(id: string): Promise<void> {
