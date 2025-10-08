@@ -13,7 +13,10 @@ export class CardService {
 
   async create(createCardDto: CreateCardDto): Promise<Card> {
     try {
-      // Calcular posición si no se proporciona
+      if (!createCardDto.title || !createCardDto.boardId || !createCardDto.columnId) {
+        throw new BadRequestException('Faltan campos requeridos: title, boardId, columnId');
+      }
+
       if (!createCardDto.position) {
         const lastCard = await this.cardModel
           .findOne({ columnId: createCardDto.columnId })
@@ -23,7 +26,6 @@ export class CardService {
         createCardDto.position = lastCard ? lastCard.position + 1 : 0;
       }
 
-      // Establecer valores por defecto
       const cardData = {
         ...createCardDto,
         priority: createCardDto.priority || 'medium',
@@ -32,24 +34,31 @@ export class CardService {
       };
 
       const createdCard = new this.cardModel(cardData);
-      return await createdCard.save();
+      const savedCard = await createdCard.save();
+      
+      return savedCard;
     } catch (error) {
       throw new BadRequestException(`Error creating card: ${error.message}`);
     }
   }
 
   async findAll(boardId?: string): Promise<Card[]> {
-    const query: any = { isActive: true };
+    try {
+      const query: Record<string, unknown> = { isActive: true };
 
-    if (boardId) {
-      query.boardId = boardId;
+      if (boardId) {
+        query.boardId = boardId;
+      }
+
+      const cards = await this.cardModel
+        .find(query)
+        .sort({ position: 1, createdAt: 1 })
+        .exec();
+
+      return cards;
+    } catch (error) {
+      throw error;
     }
-
-    return this.cardModel
-      .find(query)
-      .populate('columnId')
-      .sort({ position: 1, createdAt: 1 })
-      .exec();
   }
 
   async findByColumn(columnId: string): Promise<Card[]> {
@@ -74,9 +83,16 @@ export class CardService {
 
   async update(id: string, updateCardDto: UpdateCardDto): Promise<Card> {
     try {
+      if (!id || id === 'undefined') {
+        throw new BadRequestException('ID de tarjeta inválido');
+      }
+
+      const cleanUpdateData = Object.fromEntries(
+        Object.entries(updateCardDto).filter(([_, value]) => value !== undefined)
+      );
+
       const updatedCard = await this.cardModel
-        .findByIdAndUpdate(id, updateCardDto, { new: true })
-        .populate('columnId')
+        .findByIdAndUpdate(id, cleanUpdateData, { new: true, runValidators: true })
         .exec();
 
       if (!updatedCard) {
@@ -85,18 +101,26 @@ export class CardService {
 
       return updatedCard;
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new BadRequestException(`Error updating card: ${error.message}`);
     }
   }
 
   async updatePosition(cardId: string, newPosition: number, newColumnId?: string): Promise<Card> {
-    const updateData: any = { position: newPosition };
+    try {
+      const updateData: Record<string, unknown> = { position: newPosition };
 
-    if (newColumnId) {
-      updateData.columnId = newColumnId;
+      if (newColumnId) {
+        updateData.columnId = newColumnId;
+      }
+
+      const result = await this.update(cardId, updateData);
+      return result;
+    } catch (error) {
+      throw error;
     }
-
-    return this.update(cardId, updateData);
   }
 
   async remove(id: string): Promise<void> {
