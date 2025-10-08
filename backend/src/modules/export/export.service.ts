@@ -1,23 +1,19 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { CardService } from '../card/card.service';
 import { ColumnService } from '../column/column.service';
+import { N8nService } from '../n8n/n8n.service';
 import { ExportBacklogDto } from './dto/export-backlog.dto';
-import axios from 'axios';
 
 @Injectable()
 export class ExportService {
-  private readonly logger = new Logger(ExportService.name);
-
   constructor(
     private readonly cardService: CardService,
     private readonly columnService: ColumnService,
+    private readonly n8nService: N8nService,
   ) {}
 
-  async exportBacklog(exportDto: ExportBacklogDto): Promise<{ success: boolean; message: string; jobId?: string }> {
+  async exportBacklog(exportDto: ExportBacklogDto): Promise<{ success: boolean; message: string }> {
     try {
-      this.logger.log('Iniciando exportación de backlog...');
-
-      // Obtener datos del tablero
       const cards = await this.cardService.findAll(exportDto.boardId);
       const columns = await this.columnService.findAll(exportDto.boardId);
 
@@ -25,82 +21,80 @@ export class ExportService {
         throw new BadRequestException('No hay tarjetas para exportar');
       }
 
-      // Preparar datos para exportación
       const exportData = this.prepareExportData(cards, columns, exportDto.fields);
 
-      // Enviar a N8N webhook
-      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/kanban-export';
-
       const payload = {
-        email: exportDto.email || process.env.DEFAULT_EXPORT_EMAIL,
-        data: exportData,
-        timestamp: new Date().toISOString(),
         boardId: exportDto.boardId,
+        email: exportDto.email || 'admin@useteam.io',
+        fields: exportDto.fields || ['id', 'title', 'description', 'column', 'createdAt'],
+        tasks: exportData,
       };
 
-      const response = await axios.post(n8nWebhookUrl, payload, {
-        timeout: 10000,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const result = await this.n8nService.triggerExportWorkflow({
+        boardId: payload.boardId,
+        email: payload.email,
+        fields: payload.fields,
+        tasks: payload.tasks.map(task => ({
+          id: task.id?.toString() || '',
+          title: task.title?.toString() || '',
+          description: task.description?.toString() || '',
+          column: task.column?.toString() || '',
+          createdAt: task.createdAt?.toString() || '',
+          priority: task.priority?.toString(),
+        }))
       });
-
-      this.logger.log(`Exportación enviada a N8N. Job ID: ${response.data?.jobId}`);
-
-      return {
-        success: true,
-        message: 'Exportación iniciada correctamente. Recibirás un email con el archivo CSV.',
-        jobId: response.data?.jobId,
-      };
+      return result;
 
     } catch (error) {
-      this.logger.error(`Error en exportación: ${error.message}`);
-
-      if (axios.isAxiosError(error)) {
-        throw new BadRequestException(`Error de comunicación con N8N: ${error.message}`);
-      }
-
-      throw new BadRequestException(`Error interno: ${error.message}`);
+      throw new BadRequestException(`Error en exportación: ${error.message}`);
     }
   }
 
-  private prepareExportData(cards: any[], columns: any[], fields?: string[]) {
+  private prepareExportData(cards: unknown[], columns: unknown[], fields?: string[]) {
     const defaultFields = ['id', 'title', 'description', 'column', 'createdAt', 'priority', 'tags'];
     const selectedFields = fields || defaultFields;
 
     return cards.map(card => {
-      const column = columns.find(col => col._id.toString() === card.columnId.toString());
+      const cardData = card as Record<string, unknown>;
+      const column = columns.find(col => {
+        const colData = col as Record<string, unknown>;
+        return colData._id?.toString() === cardData.columnId?.toString();
+      });
+      const columnData = column as Record<string, unknown>;
 
-      const exportItem: any = {};
+      const exportItem: Record<string, unknown> = {};
 
       selectedFields.forEach(field => {
         switch (field) {
           case 'id':
-            exportItem[field] = card._id?.toString() || card.id;
+            exportItem[field] = cardData._id?.toString() || cardData.id?.toString() || '';
             break;
           case 'title':
-            exportItem[field] = card.title;
+            exportItem[field] = cardData.title?.toString() || '';
             break;
           case 'description':
-            exportItem[field] = card.description || '';
+            exportItem[field] = cardData.description?.toString() || '';
             break;
           case 'column':
-            exportItem[field] = column?.title || 'Sin columna';
+            exportItem[field] = columnData?.title?.toString() || 'Sin columna';
             break;
           case 'createdAt':
-            exportItem[field] = card.createdAt ? new Date(card.createdAt).toLocaleDateString('es-ES') : '';
+            exportItem[field] = cardData.createdAt ? 
+              new Date(cardData.createdAt as string).toLocaleDateString('es-ES') : '';
             break;
           case 'priority':
-            exportItem[field] = card.priority || 'medium';
+            exportItem[field] = cardData.priority?.toString() || 'medium';
             break;
           case 'tags':
-            exportItem[field] = card.tags?.join(', ') || '';
+            exportItem[field] = Array.isArray(cardData.tags) ? 
+              (cardData.tags as string[]).join(', ') : '';
             break;
           case 'dueDate':
-            exportItem[field] = card.dueDate ? new Date(card.dueDate).toLocaleDateString('es-ES') : '';
+            exportItem[field] = cardData.dueDate ? 
+              new Date(cardData.dueDate as string).toLocaleDateString('es-ES') : '';
             break;
           default:
-            exportItem[field] = card[field] || '';
+            exportItem[field] = cardData[field]?.toString() || '';
         }
       });
 
