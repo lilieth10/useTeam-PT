@@ -110,16 +110,41 @@ export class CardService {
 
   async updatePosition(cardId: string, newPosition: number, newColumnId?: string): Promise<Card> {
     try {
+      // Validaciones específicas
+      if (!cardId || cardId === 'undefined') {
+        throw new BadRequestException('ID de tarjeta inválido');
+      }
+
+      if (typeof newPosition !== 'number' || newPosition < 0) {
+        throw new BadRequestException('La posición debe ser un número válido mayor o igual a 0');
+      }
+
+      // Verificar que la tarjeta existe
+      const existingCard = await this.cardModel.findById(cardId).exec();
+      if (!existingCard) {
+        throw new NotFoundException(`Tarjeta con ID ${cardId} no encontrada`);
+      }
+
       const updateData: Record<string, unknown> = { position: newPosition };
 
-      if (newColumnId) {
+      if (newColumnId && newColumnId !== existingCard.columnId.toString()) {
         updateData.columnId = newColumnId;
       }
 
-      const result = await this.update(cardId, updateData);
-      return result;
+      const updatedCard = await this.cardModel
+        .findByIdAndUpdate(cardId, updateData, { new: true, runValidators: true })
+        .exec();
+
+      if (!updatedCard) {
+        throw new NotFoundException(`Error al actualizar la tarjeta con ID ${cardId}`);
+      }
+
+      return updatedCard;
     } catch (error) {
-      throw error;
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(`Error actualizando posición de tarjeta: ${error.message}`);
     }
   }
 

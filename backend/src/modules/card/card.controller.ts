@@ -12,6 +12,7 @@ import {
 import { CardService } from './card.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import { UpdateCardPositionDto } from './dto/update-card-position.dto';
 
 @Controller('cards')
 export class CardController {
@@ -50,9 +51,9 @@ export class CardController {
   @Patch(':id/position')
   updatePosition(
     @Param('id') id: string,
-    @Body() body: { position: number; columnId?: string }
+    @Body() updatePositionDto: UpdateCardPositionDto
   ) {
-    return this.cardService.updatePosition(id, body.position, body.columnId);
+    return this.cardService.updatePosition(id, updatePositionDto.position, updatePositionDto.columnId);
   }
 
   @Delete(':id')
