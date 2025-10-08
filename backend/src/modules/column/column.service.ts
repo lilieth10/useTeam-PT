@@ -38,7 +38,7 @@ export class ColumnService {
   }
 
   async findAll(boardId?: string): Promise<Column[]> {
-    const query: any = { isActive: true };
+    const query: Record<string, unknown> = { isActive: true };
 
     if (boardId) {
       query.boardId = boardId;
