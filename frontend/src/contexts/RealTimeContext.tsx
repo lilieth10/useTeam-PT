@@ -47,13 +47,30 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
 
   // Escuchar eventos de tareas en tiempo real
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      return;
+    }
 
     const handleCardCreated = (data: CardEventData) => {
       toast({
         title: "🆕 Nueva tarea",
         description: `Se creó la tarea: ${data.title || 'Sin título'}`,
         variant: "default",
+      });
+      
+      // Forzar recarga de tareas
+      setTasks(prevTasks => {
+        const newTask: Task = {
+          id: data.cardId || Date.now().toString(),
+          title: data.title || 'Nueva tarea',
+          description: data.description || '',
+          status: 'todo', // Valor por defecto
+          columnId: data.columnId,
+          position: 0,
+          priority: 'medium',
+          createdAt: new Date()
+        };
+        return [...prevTasks, newTask];
       });
     };
 
@@ -63,6 +80,24 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
         description: `Se actualizó la tarea: ${data.title || 'Sin título'}`,
         variant: "default",
       });
+
+      // Actualizar la tarea en el estado local
+      setTasks(prevTasks => {
+        const updatedTasks = prevTasks.map(task => {
+          if (task.id === data.cardId) {
+            return {
+              ...task,
+              title: data.title || task.title,
+              description: data.description !== undefined ? data.description : task.description,
+              status: data.columnId ? data.columnId as Task['status'] : task.status,
+              columnId: data.columnId || task.columnId,
+              position: data.position !== undefined ? data.position : task.position
+            };
+          }
+          return task;
+        });
+        return updatedTasks;
+      });
     };
 
     const handleCardDeleted = (cardId: string) => {
@@ -71,6 +106,11 @@ export const RealTimeProvider = ({ children }: RealTimeProviderProps) => {
         description: "Una tarea fue eliminada por otro usuario",
         variant: "destructive",
       });
+
+      // Eliminar la tarea del estado local
+      setTasks(prevTasks => 
+        prevTasks.filter(task => task.id !== cardId)
+      );
     };
 
     const handleCardMoved = (data: CardEventData) => {

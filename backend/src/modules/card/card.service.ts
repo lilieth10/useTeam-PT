@@ -177,15 +177,17 @@ export class CardService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.cardModel
-      .findByIdAndUpdate(id, { isActive: false }, { new: true })
-      .exec();
-
-    if (!result) {
-      throw new NotFoundException(`Card with ID ${id} not found`);
+    // Primero obtenemos la tarjeta para verificar que existe
+    const cardToDelete = await this.cardModel.findById(id).exec();
+    
+    if (!cardToDelete) {
+      throw new NotFoundException(`No se encontró la tarjeta con ID ${id}`);
     }
 
-    // Emitir evento WebSocket para soft delete
+    // Realizamos el borrado físico
+    await this.cardModel.findByIdAndDelete(id).exec();
+
+    // Enviamos el evento de WebSocket con el ID de la tarjeta
     this.webSocketGateway.emitCardDeleted(id);
   }
 

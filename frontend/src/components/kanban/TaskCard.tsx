@@ -24,8 +24,6 @@ export const TaskCard = ({ task, onEdit, onDelete }: TaskCardProps) => {
     transition: isDragging ? 'none' : transition,
     opacity: isDragging ? 0.6 : 1,
     zIndex: isDragging ? 1000 : 'auto',
-    scale: isDragging ? '1.08' : '1',
-    rotate: isDragging ? '5deg' : '0deg',
   };
 
   const formatDate = (date: Date) => {
@@ -51,25 +49,33 @@ export const TaskCard = ({ task, onEdit, onDelete }: TaskCardProps) => {
       style={style}
       {...attributes}
       {...listeners}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      whileHover={{ 
-        scale: 1.08,
-        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 10px 20px -5px rgba(0, 0, 0, 0.1)",
-        y: -5
+      initial={{ opacity: 0, y: 20, scale: 1 }}
+      animate={{ 
+        opacity: 1, 
+        y: 0,
+        scale: isDragging ? 1.08 : 1,
+        rotate: isDragging ? '2deg' : '0deg'
       }}
-      whileTap={{ scale: 0.92, y: 2 }}
+      exit={{ opacity: 0, y: -20 }}
+      whileHover={!isDragging ? { 
+        scale: 1.05,
+        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+        y: -2,
+        transition: { duration: 0.15 }
+      } : {}}
+      whileTap={!isDragging ? { 
+        scale: 0.98,
+        y: 1,
+        transition: { duration: 0.1 }
+      } : {}}
       transition={{ 
         type: "spring", 
         stiffness: 400, 
         damping: 25,
-        opacity: { duration: 0.2 },
-        y: { duration: 0.3 },
-        scale: { duration: 0.2 }
+        duration: 0.2
       }}
       className={`bg-card rounded-xl p-5 shadow-lg border border-border/50 cursor-grab active:cursor-grabbing group backdrop-blur-sm ${
-        isDragging ? 'shadow-2xl border-primary/40 bg-card/95 rotate-2' : 'hover:border-primary/30'
+        isDragging ? 'shadow-2xl border-primary/40 bg-card/95 z-50' : 'hover:border-primary/30'
       }`}
     >
       <div className="flex items-start justify-between mb-3">

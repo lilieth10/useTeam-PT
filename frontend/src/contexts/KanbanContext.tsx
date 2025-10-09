@@ -14,7 +14,7 @@ interface KanbanFilters {
 interface KanbanContextType {
   // Estado de tareas
   tasks: Task[];
-  setTasks: (tasks: Task[]) => void;
+  setTasks: (tasks: Task[] | ((prevTasks: Task[]) => Task[])) => void;
 
   // Estado de filtros
   filters: KanbanFilters;

@@ -12,22 +12,30 @@ export class TaskService {
    */
   static async getTasks(boardId?: string): Promise<Task[]> {
     try {
-      const response = await apiClient.get<Task[]>(API_ENDPOINTS.CARDS, {
+      const response = await apiClient.get(API_ENDPOINTS.CARDS, {
         params: boardId ? { boardId } : undefined,
       });
 
-      const rawTasks = Array.isArray(response.data) ? response.data : (response.data.data || []);
+      // Asegurarse de que siempre trabajamos con un array
+      let rawTasks = [];
+      if (Array.isArray(response.data)) {
+        rawTasks = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        rawTasks = response.data.data;
+      } else if (response.data && response.data.data) {
+        rawTasks = [response.data.data];
+      }
 
-      const mappedTasks = rawTasks.map(task => ({
+      return rawTasks.map(task => ({
         ...task,
         id: task._id || task.id,
         status: this.mapColumnIdToStatus(task.columnId),
-        createdAt: new Date(task.createdAt || Date.now())
+        createdAt: task.createdAt ? new Date(task.createdAt) : new Date()
       }));
-
-      return mappedTasks;
     } catch (error) {
-      return this.getLocalTasks();
+      console.error('Error al obtener tareas:', error);
+      // En lugar de devolver tareas locales, lanzamos el error
+      throw new Error('No se pudieron cargar las tareas. Por favor, recarga la página.');
     }
   }
 
