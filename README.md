@@ -81,10 +81,9 @@ useTeam-PT/
 
 ### ⚠️ PARA EVALUADORES: CONFIGURACIÓN CRÍTICA REQUERIDA
 
-**Si eres evaluador de esta prueba técnica, por favor sigue la guía específica:**
-👉 **[SETUP-EVALUADORES.md](./SETUP-EVALUADORES.md)** 👈
+**La exportación de N8N requiere configuración específica de credenciales SMTP y variables de entorno.**
 
-La exportación de N8N requiere configuración específica de credenciales SMTP y variables de entorno.
+Ver instrucciones detalladas en: [n8n/setup-instructions.md](./n8n/setup-instructions.md)
 
 ### Prerrequisitos
 

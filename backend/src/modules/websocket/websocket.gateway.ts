@@ -32,6 +32,20 @@ interface ExportEventData {
   fields?: string[];
 }
 
+interface TaskData {
+  id: string;
+  title: string;
+  description: string;
+  status: 'todo' | 'inProgress' | 'completed';
+  priority: string;
+  tags: string[];
+  dueDate?: Date;
+  createdAt: Date;
+  position: number;
+  boardId: string;
+  columnId: string;
+}
+
 interface WebSocketResponse {
   success: boolean;
   message: string;
@@ -115,11 +129,11 @@ export class KanbanWebSocketGateway implements OnGatewayConnection, OnGatewayDis
 
   // ========== MÉTODOS PÚBLICOS PARA OTROS SERVICIOS ==========
 
-  emitCardCreated(task: any): void {
+  emitCardCreated(task: TaskData): void {
     this.server.emit('card:created', { task });
   }
 
-  emitCardUpdated(task: any): void {
+  emitCardUpdated(task: TaskData): void {
     this.server.emit('card:updated', { task });
   }
 
@@ -127,7 +141,7 @@ export class KanbanWebSocketGateway implements OnGatewayConnection, OnGatewayDis
     this.server.emit('card:deleted', { taskId });
   }
 
-  emitCardMoved(task: any): void {
+  emitCardMoved(task: TaskData): void {
     this.server.emit('card:moved', { task });
   }
 

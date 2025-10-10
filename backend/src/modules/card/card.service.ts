@@ -1,10 +1,25 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Document } from 'mongoose';
 import { Card, CardDocument } from '../../database/schemas/card.schema';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { KanbanWebSocketGateway } from '../websocket/websocket.gateway';
+
+// Interface para el objeto Task del frontend
+interface TransformedTask {
+  id: string;
+  title: string;
+  description: string;
+  status: 'todo' | 'inProgress' | 'completed';
+  priority: string;
+  tags: string[];
+  dueDate?: Date;
+  createdAt: Date;
+  position: number;
+  boardId: string;
+  columnId: string;
+}
 
 @Injectable()
 export class CardService {
@@ -244,7 +259,7 @@ export class CardService {
   }
 
   // Método para transformar Card de MongoDB a Task del frontend
-  private transformCardToTask(card: any): any {
+  private transformCardToTask(card: CardDocument): TransformedTask {
     // Mapeo de columnId a status (igual que en el frontend)
     const mapColumnIdToStatus = (columnId: string): 'todo' | 'inProgress' | 'completed' => {
       const columnToStatusMap = {
@@ -267,14 +282,14 @@ export class CardService {
       id: card._id.toString(),
       title: card.title,
       description: card.description || '',
-      status: mapColumnIdToStatus(card.columnId),
+      status: mapColumnIdToStatus(card.columnId.toString()),
       priority: card.priority || 'medium',
       tags: card.tags || [],
       dueDate: card.dueDate,
-      createdAt: card.createdAt,
+      createdAt: (card as any).createdAt || new Date(),
       position: card.position || 0,
-      boardId: card.boardId,
-      columnId: card.columnId
+      boardId: card.boardId.toString(),
+      columnId: card.columnId.toString()
     };
   }
 }

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Task } from '@/types/task';
 import { useTasks } from '@/hooks/useTasks';
 import { useTaskOperations } from '@/hooks/useTaskOperations';
-import { useRealTimeContext } from '@/contexts/RealTimeContext';
 import { Modal } from '@/components/kanban/Modal';
 import { TaskForm } from '@/components/kanban/TaskForm';
 import { TaskCard } from '@/components/kanban/TaskCard';

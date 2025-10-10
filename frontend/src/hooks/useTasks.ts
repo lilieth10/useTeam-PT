@@ -59,8 +59,8 @@ export const useTasks = (boardId?: string) => {
   useEffect(() => {
     if (!isConnected) return;
 
-    const handleCardCreated = (data: any) => {
-      // Actualización optimista + refetch para sincronizar
+    const handleCardCreated = (data: WebSocketTaskEvent) => {
+      // Actualización optimista para nueva tarea
       if (data?.task) {
         setTasks(prevTasks => [...prevTasks, data.task]);
       } else {
@@ -68,8 +68,8 @@ export const useTasks = (boardId?: string) => {
       }
     };
 
-    const handleCardUpdated = (data: any) => {
-      // Actualización optimista + refetch para sincronizar
+    const handleCardUpdated = (data: WebSocketTaskEvent) => {
+      // Actualización optimista para tarea modificada
       if (data?.task) {
         setTasks(prevTasks => 
           prevTasks.map(task => 
@@ -81,8 +81,8 @@ export const useTasks = (boardId?: string) => {
       }
     };
 
-    const handleCardDeleted = (data: any) => {
-      // Actualización optimista + refetch para sincronizar
+    const handleCardDeleted = (data: WebSocketDeleteEvent) => {
+      // Actualización optimista para tarea eliminada
       if (data?.taskId) {
         setTasks(prevTasks => 
           prevTasks.filter(task => task.id.toString() !== data.taskId.toString())
@@ -92,8 +92,8 @@ export const useTasks = (boardId?: string) => {
       }
     };
 
-    const handleCardMoved = (data: any) => {
-      // Para drag & drop, usar actualización optimista si tenemos la tarea
+    const handleCardMoved = (data: WebSocketTaskEvent) => {
+      // Actualización optimista para movimiento entre columnas
       if (data?.task) {
         setTasks(prevTasks => 
           prevTasks.map(task => 
@@ -106,10 +106,9 @@ export const useTasks = (boardId?: string) => {
       }
     };
 
-    const handleCardsReordered = (data: any) => {
-      // Para reordenamiento, usar actualización optimista si tenemos los datos
+    const handleCardsReordered = (data: WebSocketReorderEvent) => {
+      // Actualización optimista para reordenamiento dentro de columna
       if (data?.tasks && Array.isArray(data.tasks)) {
-        // Actualizar múltiples tareas con sus nuevas posiciones
         setTasks(prevTasks => {
           const updatedTasksMap = new Map<string | number, Task>();
           data.tasks.forEach((task: Task) => {
