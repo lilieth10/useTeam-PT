@@ -123,11 +123,17 @@ export const KanbanBoard = () => {
         const newColumnId = mapStatusToColumnId(newStatus);
         await updateTaskPosition(activeTask.id, 0, newColumnId);
       } else {
-        // Movimiento dentro de la misma columna - usar índice directamente
-        const tasksInColumn = tasks.filter(t => t.status === activeTask.status);
+        // Movimiento dentro de la misma columna - usar índice de destino
+        const tasksInColumn = tasks
+          .filter(t => t.status === activeTask.status)
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
+        
+        const activeIndex = tasksInColumn.findIndex(t => t.id.toString() === activeId);
         const overIndex = tasksInColumn.findIndex(t => t.id.toString() === overId);
 
-        if (overIndex !== -1) {
+        if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
+          // Usar el índice de destino directamente
+          // El backend se encargará de reordenar todas las posiciones
           const newColumnId = mapStatusToColumnId(activeTask.status);
           await updateTaskPosition(activeTask.id, overIndex, newColumnId);
         }

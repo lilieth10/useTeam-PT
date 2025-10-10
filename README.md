@@ -79,12 +79,20 @@ useTeam-PT/
 
 ## 🔧 Instalación y Configuración
 
+### ⚠️ PARA EVALUADORES: CONFIGURACIÓN CRÍTICA REQUERIDA
+
+**Si eres evaluador de esta prueba técnica, por favor sigue la guía específica:**
+👉 **[SETUP-EVALUADORES.md](./SETUP-EVALUADORES.md)** 👈
+
+La exportación de N8N requiere configuración específica de credenciales SMTP y variables de entorno.
+
 ### Prerrequisitos
 
 - **Node.js >= 18.x**
 - **npm** o **yarn**
 - **Docker** y **Docker Compose**
 - **Git**
+- **Cuenta Gmail con App Password** (para N8N)
 
 ### 1. Clonar el repositorio
 

@@ -38,13 +38,9 @@ export class CardService {
       const createdCard = new this.cardModel(cardData);
       const savedCard = await createdCard.save();
       
-      // Emitir evento WebSocket
-      this.webSocketGateway.emitCardCreated({
-        cardId: savedCard._id.toString(),
-        title: savedCard.title,
-        description: savedCard.description,
-        columnId: savedCard.columnId.toString(),
-      });
+      // Emitir evento WebSocket con tarea completa transformada
+      const transformedTask = this.transformCardToTask(savedCard);
+      this.webSocketGateway.emitCardCreated(transformedTask);
       
       return savedCard;
     } catch (error) {
@@ -109,13 +105,9 @@ export class CardService {
         throw new NotFoundException(`Card with ID ${id} not found`);
       }
 
-      // Emitir evento WebSocket
-      this.webSocketGateway.emitCardUpdated({
-        cardId: updatedCard._id.toString(),
-        title: updatedCard.title,
-        description: updatedCard.description,
-        columnId: updatedCard.columnId.toString(),
-      });
+      // Emitir evento WebSocket con tarea completa transformada
+      const transformedTask = this.transformCardToTask(updatedCard);
+      this.webSocketGateway.emitCardUpdated(transformedTask);
 
       return updatedCard;
     } catch (error) {
@@ -143,37 +135,81 @@ export class CardService {
         throw new NotFoundException(`Tarjeta con ID ${cardId} no encontrada`);
       }
 
-      const updateData: Record<string, unknown> = { position: newPosition };
+      const targetColumnId = newColumnId || existingCard.columnId.toString();
+      
+      // Si es movimiento dentro de la misma columna, reordenar todas las tareas
+      if (targetColumnId === existingCard.columnId.toString()) {
+        await this.reorderTasksInColumn(cardId, newPosition, targetColumnId);
+        
+        // Obtener todas las tareas reordenadas y enviarlas
+        const reorderedTasks = await this.cardModel
+          .find({ columnId: targetColumnId, isActive: true })
+          .sort({ position: 1, createdAt: 1 })
+          .exec();
+        
+        // Transformar y enviar todas las tareas reordenadas
+        const transformedTasks = reorderedTasks.map(task => this.transformCardToTask(task));
+        this.webSocketGateway.server.emit('cards:reordered', { 
+          columnId: targetColumnId,
+          tasks: transformedTasks 
+        });
+      } else {
+        // Movimiento entre columnas
+        const updateData: Record<string, unknown> = { 
+          position: newPosition,
+          columnId: targetColumnId 
+        };
 
-      if (newColumnId && newColumnId !== existingCard.columnId.toString()) {
-        updateData.columnId = newColumnId;
+        const updatedCard = await this.cardModel
+          .findByIdAndUpdate(cardId, updateData, { new: true, runValidators: true })
+          .exec();
+
+        if (updatedCard) {
+          // Emitir evento WebSocket para movimiento entre columnas
+          const transformedTask = this.transformCardToTask(updatedCard);
+          this.webSocketGateway.emitCardMoved(transformedTask);
+        }
       }
 
-      const updatedCard = await this.cardModel
-        .findByIdAndUpdate(cardId, updateData, { new: true, runValidators: true })
-        .exec();
-
-      if (!updatedCard) {
-        throw new NotFoundException(`Error al actualizar la tarjeta con ID ${cardId}`);
+      // Obtener la tarjeta actualizada para retornar
+      const finalCard = await this.cardModel.findById(cardId).exec();
+      if (!finalCard) {
+        throw new NotFoundException(`Error al obtener la tarjeta actualizada con ID ${cardId}`);
       }
 
-      // Emitir evento WebSocket para drag & drop
-      this.webSocketGateway.emitCardMoved({
-        cardId: updatedCard._id.toString(),
-        title: updatedCard.title,
-        description: updatedCard.description,
-        position: newPosition,
-        columnId: existingCard.columnId.toString(), // Columna original
-        newColumnId: newColumnId || updatedCard.columnId.toString(), // Columna destino
-      });
-
-      return updatedCard;
+      return finalCard;
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
       throw new BadRequestException(`Error actualizando posición de tarjeta: ${error.message}`);
     }
+  }
+
+  // Método para reordenar tareas dentro de la misma columna
+  private async reorderTasksInColumn(cardId: string, newIndex: number, columnId: string): Promise<void> {
+    // Obtener todas las tareas de la columna ordenadas por posición
+    const tasksInColumn = await this.cardModel
+      .find({ columnId, isActive: true })
+      .sort({ position: 1, createdAt: 1 })
+      .exec();
+
+    // Encontrar la tarea que se está moviendo
+    const movingTaskIndex = tasksInColumn.findIndex(task => task._id.toString() === cardId);
+    if (movingTaskIndex === -1) return;
+
+    // Remover la tarea de su posición actual
+    const [movingTask] = tasksInColumn.splice(movingTaskIndex, 1);
+
+    // Insertar en la nueva posición
+    tasksInColumn.splice(newIndex, 0, movingTask);
+
+    // Actualizar las posiciones de todas las tareas
+    const updatePromises = tasksInColumn.map((task, index) => 
+      this.cardModel.findByIdAndUpdate(task._id, { position: index }).exec()
+    );
+
+    await Promise.all(updatePromises);
   }
 
   async remove(id: string): Promise<void> {
@@ -188,7 +224,7 @@ export class CardService {
     await this.cardModel.findByIdAndDelete(id).exec();
 
     // Enviamos el evento de WebSocket con el ID de la tarjeta
-    this.webSocketGateway.emitCardDeleted(id);
+    this.webSocketGateway.emitCardDeleted(cardToDelete._id.toString());
   }
 
   async delete(id: string): Promise<void> {
@@ -205,5 +241,40 @@ export class CardService {
       .populate('columnId')
       .sort({ position: 1, createdAt: 1 })
       .exec();
+  }
+
+  // Método para transformar Card de MongoDB a Task del frontend
+  private transformCardToTask(card: any): any {
+    // Mapeo de columnId a status (igual que en el frontend)
+    const mapColumnIdToStatus = (columnId: string): 'todo' | 'inProgress' | 'completed' => {
+      const columnToStatusMap = {
+        'todo': 'todo' as const,
+        'inProgress': 'inProgress' as const,
+        'completed': 'completed' as const,
+      };
+      
+      // Mapeo para ObjectIds (de tareas más antiguas)
+      const objectIdToStatusMap = {
+        '507f1f77bcf86cd799439011': 'todo' as const,
+        '507f1f77bcf86cd799439012': 'inProgress' as const,
+        '507f1f77bcf86cd799439013': 'completed' as const,
+      };
+      
+      return columnToStatusMap[columnId] || objectIdToStatusMap[columnId] || 'todo';
+    };
+
+    return {
+      id: card._id.toString(),
+      title: card.title,
+      description: card.description || '',
+      status: mapColumnIdToStatus(card.columnId),
+      priority: card.priority || 'medium',
+      tags: card.tags || [],
+      dueDate: card.dueDate,
+      createdAt: card.createdAt,
+      position: card.position || 0,
+      boardId: card.boardId,
+      columnId: card.columnId
+    };
   }
 }

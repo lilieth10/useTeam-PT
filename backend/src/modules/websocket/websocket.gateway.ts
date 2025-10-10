@@ -115,20 +115,20 @@ export class KanbanWebSocketGateway implements OnGatewayConnection, OnGatewayDis
 
   // ========== MÉTODOS PÚBLICOS PARA OTROS SERVICIOS ==========
 
-  emitCardCreated(card: CardEventData): void {
-    this.server.emit('card:created', card);
+  emitCardCreated(task: any): void {
+    this.server.emit('card:created', { task });
   }
 
-  emitCardUpdated(card: CardEventData): void {
-    this.server.emit('card:updated', card);
+  emitCardUpdated(task: any): void {
+    this.server.emit('card:updated', { task });
   }
 
-  emitCardDeleted(cardId: string): void {
-    this.server.emit('card:deleted', cardId);
+  emitCardDeleted(taskId: string): void {
+    this.server.emit('card:deleted', { taskId });
   }
 
-  emitCardMoved(card: CardEventData): void {
-    this.server.emit('card:moved', card);
+  emitCardMoved(task: any): void {
+    this.server.emit('card:moved', { task });
   }
 
   emitExportSuccess(data: ExportEventData): void {

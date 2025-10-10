@@ -4,6 +4,20 @@ import { TaskService } from '@/services/taskService';
 import { filterTasks, sortTasksByPosition } from '@/utils/taskUtils';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
+// Interfaces para eventos WebSocket
+interface WebSocketTaskEvent {
+  task: Task;
+}
+
+interface WebSocketDeleteEvent {
+  taskId: string | number;
+}
+
+interface WebSocketReorderEvent {
+  columnId: string;
+  tasks: Task[];
+}
+
 /**
  * Hook personalizado para gestión de tareas
  * Sigue el principio de responsabilidad única (SRP)
@@ -45,20 +59,72 @@ export const useTasks = (boardId?: string) => {
   useEffect(() => {
     if (!isConnected) return;
 
-    const handleCardCreated = () => {
-      fetchTasks();
+    const handleCardCreated = (data: any) => {
+      // Actualización optimista + refetch para sincronizar
+      if (data?.task) {
+        setTasks(prevTasks => [...prevTasks, data.task]);
+      } else {
+        fetchTasks();
+      }
     };
 
-    const handleCardUpdated = () => {
-      fetchTasks();
+    const handleCardUpdated = (data: any) => {
+      // Actualización optimista + refetch para sincronizar
+      if (data?.task) {
+        setTasks(prevTasks => 
+          prevTasks.map(task => 
+            task.id === data.task.id ? data.task : task
+          )
+        );
+      } else {
+        fetchTasks();
+      }
     };
 
-    const handleCardDeleted = () => {
-      fetchTasks();
+    const handleCardDeleted = (data: any) => {
+      // Actualización optimista + refetch para sincronizar
+      if (data?.taskId) {
+        setTasks(prevTasks => 
+          prevTasks.filter(task => task.id.toString() !== data.taskId.toString())
+        );
+      } else {
+        fetchTasks();
+      }
     };
 
-    const handleCardMoved = () => {
-      fetchTasks();
+    const handleCardMoved = (data: any) => {
+      // Para drag & drop, usar actualización optimista si tenemos la tarea
+      if (data?.task) {
+        setTasks(prevTasks => 
+          prevTasks.map(task => 
+            task.id === data.task.id ? data.task : task
+          )
+        );
+      } else {
+        // Fallback: refetch solo si no tenemos los datos
+        fetchTasks();
+      }
+    };
+
+    const handleCardsReordered = (data: any) => {
+      // Para reordenamiento, usar actualización optimista si tenemos los datos
+      if (data?.tasks && Array.isArray(data.tasks)) {
+        // Actualizar múltiples tareas con sus nuevas posiciones
+        setTasks(prevTasks => {
+          const updatedTasksMap = new Map<string | number, Task>();
+          data.tasks.forEach((task: Task) => {
+            updatedTasksMap.set(task.id, task);
+          });
+          
+          return prevTasks.map(task => {
+            const updatedTask = updatedTasksMap.get(task.id);
+            return updatedTask || task;
+          });
+        });
+      } else {
+        // Fallback: refetch solo si no tenemos los datos
+        fetchTasks();
+      }
     };
 
     // Suscribirse a eventos
@@ -66,12 +132,14 @@ export const useTasks = (boardId?: string) => {
     on('card:updated', handleCardUpdated);
     on('card:deleted', handleCardDeleted);
     on('card:moved', handleCardMoved);
+    on('cards:reordered', handleCardsReordered);
 
     return () => {
       off('card:created', handleCardCreated);
       off('card:updated', handleCardUpdated);
       off('card:deleted', handleCardDeleted);
       off('card:moved', handleCardMoved);
+      off('cards:reordered', handleCardsReordered);
     };
   }, [isConnected, on, off, fetchTasks]);
 
