@@ -7,8 +7,10 @@ async function bootstrap() {
 
   // Configurar CORS
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: '*', // Permitir todos los orígenes temporalmente
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // Configurar validación global
