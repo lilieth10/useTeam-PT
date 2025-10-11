@@ -145,6 +145,10 @@ export class KanbanWebSocketGateway implements OnGatewayConnection, OnGatewayDis
     this.server.emit('card:moved', { task });
   }
 
+  emitCardsReordered(columnId: string, tasks: TaskData[]): void {
+    this.server.emit('cards:reordered', { columnId, tasks });
+  }
+
   emitExportSuccess(data: ExportEventData): void {
     this.server.emit('export:success', data);
   }

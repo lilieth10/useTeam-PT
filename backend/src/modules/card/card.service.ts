@@ -164,10 +164,7 @@ export class CardService {
         
         // Transformar y enviar todas las tareas reordenadas
         const transformedTasks = reorderedTasks.map(task => this.transformCardToTask(task));
-        this.webSocketGateway.server.emit('cards:reordered', { 
-          columnId: targetColumnId,
-          tasks: transformedTasks 
-        });
+        this.webSocketGateway.emitCardsReordered(targetColumnId, transformedTasks);
       } else {
         // Movimiento entre columnas
         const updateData: Record<string, unknown> = { 
