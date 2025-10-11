@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Task, TaskStatus } from '@/types/task';
 import { TaskService } from '@/services/taskService';
-import { filterTasks, sortTasksByPosition } from '@/utils/taskUtils';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useToast } from '@/hooks/use-toast';
+import { filterTasks, sortTasksByPosition } from '@/utils/taskUtils';
 
-// Interfaces para eventos WebSocket
+// Interfaces para evento WebSocket
 interface WebSocketTaskEvent {
   task: Task;
 }
@@ -27,6 +28,7 @@ export const useTasks = (boardId?: string) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isConnected, on, off } = useWebSocket();
+  const { toast } = useToast();
 
   // Estado para filtros
   const [filters, setFilters] = useState<{
@@ -95,11 +97,24 @@ export const useTasks = (boardId?: string) => {
     const handleCardMoved = (data: WebSocketTaskEvent) => {
       // Actualización optimista para movimiento entre columnas
       if (data?.task) {
+        const statusNames = {
+          'todo': 'Por hacer',
+          'inProgress': 'En progreso', 
+          'completed': 'Completado'
+        };
+        
         setTasks(prevTasks => 
           prevTasks.map(task => 
             task.id === data.task.id ? data.task : task
           )
         );
+        
+        // Mostrar notificación específica
+        toast({
+          title: "📋 Tarea movida",
+          description: `"${data.task.title}" se movió a ${statusNames[data.task.status]}`,
+          variant: "default",
+        });
       } else {
         // Fallback: refetch solo si no tenemos los datos
         fetchTasks();
@@ -109,6 +124,12 @@ export const useTasks = (boardId?: string) => {
     const handleCardsReordered = (data: WebSocketReorderEvent) => {
       // Actualización optimista para reordenamiento dentro de columna
       if (data?.tasks && Array.isArray(data.tasks)) {
+        const statusNames = {
+          'todo': 'Por hacer',
+          'inProgress': 'En progreso', 
+          'completed': 'Completado'
+        };
+        
         setTasks(prevTasks => {
           const updatedTasksMap = new Map<string | number, Task>();
           data.tasks.forEach((task: Task) => {
@@ -119,6 +140,14 @@ export const useTasks = (boardId?: string) => {
             const updatedTask = updatedTasksMap.get(task.id);
             return updatedTask || task;
           });
+        });
+        
+        // Mostrar notificación específica para reordenamiento
+        const columnName = statusNames[data.tasks[0]?.status] || 'columna';
+        toast({
+          title: "🔄 Posición actualizada",
+          description: `Tareas reordenadas en "${columnName}"`,
+          variant: "default",
         });
       } else {
         // Fallback: refetch solo si no tenemos los datos
@@ -140,7 +169,7 @@ export const useTasks = (boardId?: string) => {
       off('card:moved', handleCardMoved);
       off('cards:reordered', handleCardsReordered);
     };
-  }, [isConnected, on, off, fetchTasks]);
+  }, [isConnected, on, off, fetchTasks, toast]);
 
   // Filtrar tareas según criterios actuales
   const filteredTasks = filterTasks(tasks, filters);
